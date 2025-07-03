@@ -1,0 +1,1570 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>חילוץ נתונים גמיש מקובצי PDF</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+ <style>
+    body { font-family: Arial; margin: 20px; background: #f5f6fa; }
+    h1 { color: #2d364c; }
+    #output { margin-top: 20px; direction: rtl; }
+    input[type="file"] { margin-bottom: 15px; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 30px; background: #fff; overflow-x: auto; box-shadow: 0 1px 6px #d7dbdf; border-radius: 12px; }
+    th, td { border: 1px solid #bfc9d1; padding: 8px 5px; text-align: center; white-space: nowrap; font-size: 16px; }
+    th { background: #e4e9f2; position: sticky; top: 0; color: #465275; font-weight: bold; }
+    tr:nth-child(even) { background: #f7fafc; }
+    td input, td select { width: 90%; font-size: 15px; border: none; background: transparent; text-align: center; }
+    td input:focus { outline: 1.5px solid #5976d6; background: #e4edfa; }
+    a.file-link { color: #3d68c2; text-decoration: underline; cursor: pointer; }
+    button, .btn { background: #6377e2; color: #fff; border: none; border-radius: 8px; padding: 6px 16px; font-size: 15px; cursor: pointer; margin: 8px 0; transition: 0.2s; }
+    button:hover, .btn:hover { background: #3047af; }
+    .invalid { color: #b32020; font-weight: bold; }
+    .detail-section { display: none; background: #fafbff; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 0 2px #d5d8df; padding: 12px 16px; }
+    .details-btn { font-size: 14px; margin-top: 3px; margin-bottom: 8px; }
+    .file-title { font-weight: bold; font-size: 18px; color: #3047af; }
+    .token-box { background: #e8f0ff; direction: ltr; border-radius: 6px; padding: 6px; margin-top: 4px; font-size: 13px; max-height: 110px; overflow-y: auto;}
+    .toolbar { margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;}
+    .export-btn { margin-right: 10px;}
+    .column-menu { background: #fff; border: 1px solid #bfc9d1; border-radius: 8px; padding: 8px 16px; display: inline-block; margin-left: 8px; }
+    .column-menu label { font-size: 15px; margin-left: 5px; cursor: pointer;}
+    .column-menu input[type="checkbox"] { margin-left: 4px;}
+    .headline-main {
+      font-size: 2.2em;color: #2d364c;font-weight: 700;letter-spacing: 0.5px;margin-bottom: 18px;background: linear-gradient(90deg, #e4e9f2 0%, #f6f8fe 100%);
+      padding: 20px 30px 12px 30px;border-radius: 18px;box-shadow: 0 2px 10px #e6eaf5;display: flex;align-items: center;gap: 18px; border-bottom: 3px solid #6377e2; }
+    .headline-icon { font-size: 2.1em;  margin-left: 12px; }
+    
+    /* Modal Styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.8);
+      animation: fadeIn 0.3s ease-in-out;
+    }
+    
+    .modal-content {
+      position: relative;
+      background-color: #fefefe;
+      margin: 1% auto;
+      padding: 0;
+      border-radius: 12px;
+      width: 95%;
+      height: 95%;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .modal-header {
+      background: linear-gradient(90deg, #6377e2 0%, #8b9df7 100%);
+      color: white;
+      padding: 15px 20px;
+      border-radius: 12px 12px 0 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .modal-title {
+      font-size: 1.3em;
+      font-weight: bold;
+      margin: 0;
+      direction: rtl;
+    }
+    
+    .close {
+      color: white;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+      background: none;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background-color 0.2s;
+    }
+    
+    .close:hover {
+      background-color: rgba(255,255,255,0.2);
+    }
+    
+    .modal-body {
+      flex: 1;
+      padding: 0;
+      overflow: hidden;
+      display: flex;
+    }
+    
+    .modal-left-panel {
+      width: 50%;
+      background: #f8f9ff;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-left: 2px solid #e0e6ed;
+    }
+    
+    .modal-right-panel {
+      width: 50%;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .pdf-controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 15px;
+      background: #f8f9ff;
+      border-bottom: 1px solid #e0e6ed;
+      direction: ltr;
+      flex-shrink: 0;
+    }
+    
+    .pdf-controls button {
+      background: #6377e2;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background-color 0.2s;
+    }
+    
+    .pdf-controls button:hover:not(:disabled) {
+      background: #4a5cc7;
+    }
+    
+    .pdf-controls button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .pdf-controls input {
+      width: 50px;
+      text-align: center;
+      padding: 4px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    
+    .pdf-container {
+      flex: 1;
+      overflow: auto;
+      background: #f9f9f9;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 15px;
+    }
+    
+    .files-panel {
+      padding: 15px;
+      overflow: hidden;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .all-files-table {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      overflow: hidden;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .table-container {
+      overflow: auto;
+      flex: 1;
+    }
+    
+    .all-files-table table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin: 0;
+    }
+    
+    .all-files-table th {
+      background: #6377e2;
+      color: white;
+      padding: 8px 6px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    
+    .all-files-table td {
+      padding: 6px;
+      border-bottom: 1px solid #eee;
+      text-align: center;
+      position: relative;
+    }
+    
+    .all-files-table tbody tr:hover {
+      background: #f0f4ff;
+    }
+    
+    .all-files-table tbody tr.selected-row {
+      background: #e3f2fd;
+      border: 2px solid #6377e2;
+    }
+    
+    .all-files-table td input {
+      width: 100%;
+      border: 1px solid transparent;
+      background: transparent;
+      padding: 3px;
+      text-align: center;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+    
+    .all-files-table td input:focus {
+      border-color: #6377e2;
+      background: #e4edfa;
+      outline: none;
+    }
+    
+    .all-files-table td input.invalid {
+      background: #ffe6e6;
+      color: #b32020;
+    }
+    
+    .all-files-table td input.changed {
+      background: #fff3cd;
+      border-color: #ffc107;
+      color: #856404;
+    }
+    
+    .all-files-table td input.saved {
+      background: #d4edda;
+      border-color: #28a745;
+      color: #155724;
+    }
+    
+    .view-pdf-btn {
+      background: #17a2b8;
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      transition: background-color 0.2s;
+    }
+    
+    .view-pdf-btn:hover {
+      background: #138496;
+    }
+    
+    .view-pdf-btn.active {
+      background: #28a745;
+    }
+    
+    .section-title {
+      font-size: 1.1em;
+      font-weight: bold;
+      color: #2d364c;
+      margin-bottom: 10px;
+      padding-bottom: 5px;
+      border-bottom: 2px solid #6377e2;
+    }
+    
+    .tokens-section {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .tokens-container {
+      padding: 15px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      overflow-y: auto;
+      flex: 1;
+      background: #f8f9ff;
+      direction: ltr;
+      max-height: 180px;
+    }
+    
+    .field-selector {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    
+    .field-selector select {
+      padding: 6px;
+      border: 1px solid #6377e2;
+      border-radius: 4px;
+      background: white;
+      font-size: 13px;
+      width: 100%;
+    }
+    
+    .field-selector button {
+      background: #6377e2;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    
+    .field-selector button:hover {
+      background: #4a5cc7;
+    }
+    
+    .token-item {
+      display: inline-block;
+      margin: 1px 2px;
+      padding: 2px 4px;
+      background: #e8f0ff;
+      border-radius: 3px;
+      border: 1px solid #d0d8e8;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .token-item:hover {
+      background: #d4e4ff;
+      border-color: #6377e2;
+    }
+    
+    .selected-for-field {
+      background: #c3e6cb !important;
+      border-color: #28a745 !important;
+      box-shadow: 0 0 5px rgba(40, 167, 69, 0.3);
+    }
+    
+    .save-changes-btn {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      align-self: flex-start;
+      margin-top: 10px;
+    }
+    
+    .save-changes-btn:hover {
+      background: #218838;
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    
+    .pdf-page {
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      margin-bottom: 20px;
+      border-radius: 4px;
+      background: white;
+    }
+    
+    .loading {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 200px;
+      font-size: 18px;
+      color: #666;
+    }
+    
+    .loading::after {
+      content: '';
+      width: 30px;
+      height: 30px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #6377e2;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 10px;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      .modal-content {
+        width: 98%;
+        height: 98%;
+        margin: 1% auto;
+      }
+      
+      .modal-body {
+        flex-direction: column;
+      }
+      
+      .modal-left-panel {
+        width: 100%;
+        height: 70%;
+        border-left: none;
+        border-bottom: 2px solid #e0e6ed;
+      }
+      
+      .modal-right-panel {
+        width: 100%;
+        height: 30%;
+      }
+      
+      .pdf-controls {
+        flex-wrap: wrap;
+        gap: 5px;
+        padding: 8px;
+      }
+      
+      .pdf-controls button {
+        padding: 4px 8px;
+        font-size: 11px;
+      }
+      
+      .pdf-controls input {
+        width: 40px;
+      }
+      
+      .files-panel {
+        padding: 10px;
+        gap: 8px;
+      }
+      
+      .section-title {
+        font-size: 1em;
+      }
+      
+      .all-files-table th, .all-files-table td {
+        padding: 4px 3px;
+        font-size: 11px;
+      }
+      
+      .all-files-table td input {
+        font-size: 11px;
+        padding: 2px;
+      }
+      
+      .view-pdf-btn {
+        padding: 2px 6px;
+        font-size: 10px;
+      }
+      
+      #currentFileName {
+        font-size: 11px;
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1 class="headline-main">
+  <span class="headline-icon">📄</span>
+  חילוץ נתונים <span style="color:#6377e2;font-weight:900;">מקובצי PDF</span>
+</h1>
+
+  <input type="file" id="pdfFile" multiple accept="application/pdf">
+  <div id="output"></div>
+  
+  <!-- Modal for PDF Display -->
+  <div id="pdfModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modalTitle">תצוגת PDF</h2>
+        <button class="close" onclick="closePdfModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-left-panel">
+          <div class="files-panel">
+            <div class="section-title">טבלת כל הקבצים - עריכה און-ליין</div>
+            <div class="all-files-table">
+              <div class="table-container" id="allFilesTableContainer"></div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+              <button class="save-changes-btn" onclick="saveAllChanges()" id="saveAllBtn">שמור את כל השינויים</button>
+              <button class="save-changes-btn" onclick="exportFromModal()" style="background: #17a2b8;">ייצא לאקסל</button>
+            </div>
+            
+            <div id="tokenMappingSection" style="margin-top: 15px;">
+              <div class="section-title">מיפוי טוקנים לשדות</div>
+              
+              <div class="field-selector">
+                <label><strong>בחר שדה לעדכון:</strong></label>
+                <select id="tokenFieldSelector" style="margin-bottom: 8px;">
+                  <option value="">בחר שדה...</option>
+                </select>
+                
+                <div style="margin: 8px 0; padding: 8px; background: #f0f4ff; border-radius: 6px; border: 1px solid #d0d8e8;">
+                  <label style="font-weight: bold; margin-bottom: 5px; display: block;">היקף העדכון:</label>
+                  <div style="display: flex; gap: 15px; align-items: center;">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                      <input type="radio" name="updateScope" value="current" checked style="margin-left: 5px;">
+                      <span>קובץ נוכחי בלבד</span>
+                    </label>
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                      <input type="radio" name="updateScope" value="all" style="margin-left: 5px;">
+                      <span>כל הקבצים</span>
+                    </label>
+                  </div>
+                  <div id="scopeDescription" style="font-size: 12px; color: #666; margin-top: 5px;">
+                    יעדכן רק את הקובץ הנוכחי
+                  </div>
+                </div>
+                
+                <div style="display: flex; gap: 8px;">
+                  <button onclick="linkTokenToField()" style="background: #28a745;">
+                    קשר טוקן לשדה
+                  </button>
+                  <button onclick="clearTokenMappings()" style="background: #dc3545;">
+                    נקה קישורים
+                  </button>
+                </div>
+              </div>
+              
+              <div class="tokens-section">
+                <div class="section-title" style="font-size: 14px;">טוקנים מהקובץ הנוכחי</div>
+                <div class="tokens-container" id="inlineTokens">
+                  <div style="color: #666; text-align: center; padding: 20px; direction: rtl;">בחר קובץ לצפייה בטוקנים</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-right-panel">
+          <div class="pdf-controls">
+            <span id="currentFileName" style="font-weight: bold; color: #6377e2;">בחר קובץ לתצוגה</span>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button onclick="previousPage()" id="prevBtn">Previous</button>
+              <span>
+                Page <input type="number" id="pageInput" value="1" min="1" onchange="goToPage()"> 
+                of <span id="totalPages">0</span>
+              </span>
+              <button onclick="nextPage()" id="nextBtn">Next</button>
+              <button onclick="zoomOut()">-</button>
+              <span id="zoomLevel">100%</span>
+              <button onclick="zoomIn()">+</button>
+            </div>
+          </div>
+          <div class="pdf-container" id="pdfContainer">
+            <div class="loading" id="loadingIndicator">בחר קובץ לתצוגה מהטבלה</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const pdfjsLib = window['pdfjs-dist/build/pdf'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+    // סדר עמודות קבוע
+    const orderedHeaders = [
+      'שם קובץ', 'קנ"מ', 'משקל', 'מספר שרטוט', 'תאריך', 'כמות', 'חומר'
+    ];
+
+    let rows = [], allDetails = [], headers = [];
+    let visibleHeaders = [...orderedHeaders];
+    
+    // PDF Modal variables
+    let currentPdf = null;
+    let currentPage = 1;
+    let totalPages = 0;
+    let currentScale = 1.0;
+    let currentFileIndex = -1;
+    let selectedTokenIndex = -1;
+    let textLayerItems = []; // לשמירת פריטי הטקסט מה-PDF
+    let highlightedElements = []; // לשמירת האלמנטים המודגשים
+
+    // Token functions
+    function selectInlineToken(index) {
+      console.log('Selecting inline token:', index);
+      
+      const tokens = document.querySelectorAll('#inlineTokens .token-item');
+      tokens.forEach((token, idx) => {
+        if (idx === index) {
+          token.style.background = '#ffeb3b';
+          token.style.borderColor = '#ffc107';
+          token.style.fontWeight = 'bold';
+        } else {
+          token.style.background = '#e8f0ff';
+          token.style.borderColor = '#d0d8e8';
+          token.style.fontWeight = 'normal';
+        }
+      });
+      
+      selectedTokenIndex = index;
+      
+      if (tokens[index]) {
+        tokens[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      
+      // הדגש בPDF
+      highlightTokenInPdf(index);
+    }
+
+    function highlightTokenInPdf(tokenIndex) {
+      if (!currentPdf || currentFileIndex === -1) return;
+      
+      const detail = allDetails[currentFileIndex];
+      if (!detail || !detail.allTokens[tokenIndex]) return;
+      
+      const tokenValue = detail.allTokens[tokenIndex];
+      console.log('Highlighting token in PDF:', tokenValue);
+      
+      // נקה הדגשות קודמות
+      clearPdfHighlights();
+      
+      // חפש ברדר את הטוקן בכל העמודים
+      searchAndHighlightInAllPages(tokenValue, tokenIndex);
+    }
+
+    async function searchAndHighlightInAllPages(searchText, tokenIndex) {
+      if (!currentPdf) return;
+      
+      for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+        try {
+          const page = await currentPdf.getPage(pageNum);
+          const textContent = await page.getTextContent();
+          
+          let currentTokenIndex = 0;
+          // ספור טוקנים עד לעמוד הנוכחי
+          if (pageNum > 1) {
+            for (let p = 1; p < pageNum; p++) {
+              const prevPage = await currentPdf.getPage(p);
+              const prevContent = await prevPage.getTextContent();
+              currentTokenIndex += prevContent.items.filter(item => item.str.trim()).length;
+            }
+          }
+          
+          // חפש את הטוקן בעמוד הזה
+          for (let i = 0; i < textContent.items.length; i++) {
+            const item = textContent.items[i];
+            if (item.str.trim() && currentTokenIndex === tokenIndex) {
+              // מצאנו את הטוקן! עבור לעמוד הזה והדגש
+              if (currentPage !== pageNum) {
+                currentPage = pageNum;
+                document.getElementById('pageInput').value = currentPage;
+                await renderPdfPageWithHighlight(item);
+                updateNavigation();
+              } else {
+                await renderPdfPageWithHighlight(item);
+              }
+              return;
+            }
+            if (item.str.trim()) currentTokenIndex++;
+          }
+        } catch (error) {
+          console.error('Error searching in page:', pageNum, error);
+        }
+      }
+    }
+
+    async function renderPdfPageWithHighlight(highlightItem = null) {
+      if (!currentPdf) return;
+      
+      try {
+        const page = await currentPdf.getPage(currentPage);
+        const viewport = page.getViewport({ scale: currentScale });
+        
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        canvas.className = 'pdf-page';
+        
+        // רנדר הPDF
+        const renderContext = {
+          canvasContext: context,
+          viewport: viewport
+        };
+        
+        await page.render(renderContext).promise;
+        
+        // הוסף שכבת הדגשה
+        if (highlightItem) {
+          const highlightCanvas = document.createElement('canvas');
+          highlightCanvas.width = canvas.width;
+          highlightCanvas.height = canvas.height;
+          highlightCanvas.style.position = 'absolute';
+          highlightCanvas.style.top = '0';
+          highlightCanvas.style.left = '0';
+          highlightCanvas.style.pointerEvents = 'none';
+          
+          const highlightCtx = highlightCanvas.getContext('2d');
+          
+          // חשב את מיקום ההדגשה
+          const transform = viewport.transform;
+          const x = highlightItem.transform[4] * currentScale;
+          const y = canvas.height - (highlightItem.transform[5] * currentScale);
+          const width = highlightItem.width * currentScale;
+          const height = highlightItem.height * currentScale;
+          
+          // צייר הדגשה צהובה
+          highlightCtx.fillStyle = 'rgba(255, 235, 59, 0.4)';
+          highlightCtx.fillRect(x, y - height, width, height);
+          
+          // הוסף מסגרת
+          highlightCtx.strokeStyle = '#FFC107';
+          highlightCtx.lineWidth = 2;
+          highlightCtx.strokeRect(x, y - height, width, height);
+          
+          // צור קונטיינר עם מיקום יחסי
+          const container = document.createElement('div');
+          container.style.position = 'relative';
+          container.style.display = 'inline-block';
+          container.appendChild(canvas);
+          container.appendChild(highlightCanvas);
+          
+          document.getElementById('pdfContainer').innerHTML = '';
+          document.getElementById('pdfContainer').appendChild(container);
+          
+          // גלול להדגשה
+          setTimeout(() => {
+            const rect = highlightCanvas.getBoundingClientRect();
+            const containerRect = document.getElementById('pdfContainer').getBoundingClientRect();
+            const scrollTop = y - (containerRect.height / 2);
+            document.getElementById('pdfContainer').scrollTop = scrollTop;
+          }, 100);
+          
+        } else {
+          document.getElementById('pdfContainer').innerHTML = '';
+          document.getElementById('pdfContainer').appendChild(canvas);
+        }
+        
+      } catch (error) {
+        console.error('Error rendering PDF page with highlight:', error);
+        renderPdfPage(); // נסה רנדר רגיל
+      }
+    }
+
+    function clearPdfHighlights() {
+      // נקה הדגשות קודמות
+      highlightedElements.forEach(el => {
+        if (el && el.parentNode) {
+          el.parentNode.removeChild(el);
+        }
+      });
+      highlightedElements = [];
+    }
+
+    function linkTokenToField() {
+      const fieldSelector = document.getElementById('tokenFieldSelector');
+      const selectedField = fieldSelector.value;
+      
+      if (!selectedField) {
+        alert('אנא בחר שדה מהרשימה');
+        return;
+      }
+      
+      if (selectedTokenIndex === -1) {
+        alert('אנא בחר טוקן תחילה');
+        return;
+      }
+      
+      const detail = allDetails[currentFileIndex];
+      if (!detail || !detail.allTokens[selectedTokenIndex]) {
+        alert('שגיאה: לא נמצא הטוקן');
+        return;
+      }
+      
+      const tokenValue = detail.allTokens[selectedTokenIndex];
+      
+      // בדוק את הבחירה בצורה נכונה
+      const scopeRadio = document.querySelector('input[name="updateScope"]:checked');
+      const selectedScope = scopeRadio ? scopeRadio.value : 'current';
+      
+      console.log('Linking token to field:', tokenValue, selectedField, 'Scope selected:', selectedScope);
+      
+      let updatedCount = 0;
+      
+      if (selectedScope === 'current') {
+        // עדכן רק את הקובץ הנוכחי
+        const oldValue = rows[currentFileIndex][selectedField];
+        rows[currentFileIndex][selectedField] = tokenValue;
+        updatedCount = 1;
+        
+        console.log(`Updated CURRENT FILE ONLY: ${selectedField} = "${tokenValue}" (was: "${oldValue}")`);
+        
+        // עדכן את הטבלות
+        loadAllFilesTable();
+        renderTable();
+        
+        alert(`✅ עודכן בקובץ הנוכחי בלבד!\n\nשדה: ${selectedField}\nערך: "${tokenValue}"`);
+        
+      } else if (selectedScope === 'all') {
+        // עדכן את כל הקבצים על בסיס מרחק מהעוגן
+        const currentTokens = detail.allTokens;
+        const anchorIndex = currentTokens.findIndex(token => /^\d{1,2}:\d{1,2}$/.test(token));
+        
+        if (anchorIndex === -1) {
+          alert('❌ לא נמצא עוגן (קנ"מ) בקובץ הנוכחי\nנדרש עוגן לעדכון כל הקבצים');
+          return;
+        }
+        
+        const distanceFromAnchor = selectedTokenIndex - anchorIndex;
+        console.log('Updating ALL FILES - Distance from anchor:', distanceFromAnchor);
+        
+        rows.forEach((row, rowIndex) => {
+          const rowDetail = allDetails[rowIndex];
+          if (rowDetail && rowDetail.allTokens) {
+            const rowAnchorIndex = rowDetail.allTokens.findIndex(token => /^\d{1,2}:\d{1,2}$/.test(token));
+            
+            if (rowAnchorIndex !== -1) {
+              const expectedIndex = rowAnchorIndex + distanceFromAnchor;
+              const relativeToken = rowDetail.allTokens[expectedIndex];
+              
+              let matchingValue = null;
+              
+              // בדוק במיקום המדויק
+              if (relativeToken && (relativeToken === tokenValue || 
+                  isSimilarValue(relativeToken, tokenValue))) {
+                matchingValue = relativeToken;
+              }
+              // בדוק בטווח של ±5 מיקומים
+              else {
+                for (let offset = -5; offset <= 5; offset++) {
+                  const checkIndex = expectedIndex + offset;
+                  const checkToken = rowDetail.allTokens[checkIndex];
+                  if (checkToken && (checkToken === tokenValue || 
+                      isSimilarValue(checkToken, tokenValue))) {
+                    matchingValue = checkToken;
+                    break;
+                  }
+                }
+              }
+              
+              // חיפוש בכל הקובץ אם לא נמצא
+              if (!matchingValue) {
+                matchingValue = rowDetail.allTokens.find(token => 
+                  token && isSimilarValue(token, tokenValue)
+                );
+              }
+              
+              if (matchingValue) {
+                const oldValue = row[selectedField];
+                row[selectedField] = matchingValue;
+                updatedCount++;
+                console.log(`Updated file ${rowIndex}: ${selectedField} = "${matchingValue}" (was: "${oldValue}")`);
+              }
+            }
+          }
+        });
+        
+        // עדכן את הטבלות
+        loadAllFilesTable();
+        renderTable();
+        
+        alert(`✅ עודכנו כל הקבצים!\n\nשדה: ${selectedField}\nערך: "${tokenValue}"\nקבצים שעודכנו: ${updatedCount} מתוך ${rows.length}\nמרחק מעוגן: ${distanceFromAnchor}`);
+      }
+      
+      // סמן את הטוקן כמקושר
+      const selectedToken = document.querySelector(`#inlineTokens [data-token-index="${selectedTokenIndex}"]`);
+      if (selectedToken) {
+        selectedToken.style.background = '#c3e6cb';
+        selectedToken.style.borderColor = '#28a745';
+        const scopeIndicator = selectedScope === 'current' ? '🎯' : '🌐';
+        const scopeText = selectedScope === 'current' ? 'קובץ נוכחי' : 'כל הקבצים';
+        selectedToken.title += ` | ${scopeIndicator} ${scopeText}: ${selectedField}`;
+      }
+    }
+
+    // פונקציה לבדיקת דמיון בין ערכים
+    function isSimilarValue(token1, token2) {
+      if (!token1 || !token2) return false;
+      
+      const str1 = token1.toString().trim();
+      const str2 = token2.toString().trim();
+      
+      // בדיקה מדויקת
+      if (str1 === str2) return true;
+      
+      // בדיקה לחומרים (AISI, ST, אלומיניום וכו')
+      if (/(AISI|ST|אלומיניום|נירוסטה|פלדה|Steel)/i.test(str1) && 
+          /(AISI|ST|אלומיניום|נירוסטה|פלדה|Steel)/i.test(str2)) {
+        return true;
+      }
+      
+      // בדיקה למספרים (משקל, כמות וכו')
+      const num1 = parseFloat(str1);
+      const num2 = parseFloat(str2);
+      if (!isNaN(num1) && !isNaN(num2)) {
+        // אם שני הערכים הם מספרים, בדוק אם הם דומים (בטווח של 10%)
+        const diff = Math.abs(num1 - num2);
+        const avg = (num1 + num2) / 2;
+        return diff / avg < 0.1; // הבדל של עד 10%
+      }
+      
+      // בדיקה לתאריכים
+      if (/\d{2}[\/\-\.]\d{2}[\/\-\.]\d{4}/.test(str1) && 
+          /\d{2}[\/\-\.]\d{2}[\/\-\.]\d{4}/.test(str2)) {
+        return true; // כל התאריכים נחשבים דומים
+      }
+      
+      // בדיקה כללית להכלה
+      if (str1.includes(str2) || str2.includes(str1)) {
+        return true;
+      }
+      
+      return false;
+    }
+
+    function clearTokenMappings() {
+      selectedTokenIndex = -1;
+      
+      const tokens = document.querySelectorAll('#inlineTokens .token-item');
+      tokens.forEach(token => {
+        token.style.background = '#e8f0ff';
+        token.style.borderColor = '#d0d8e8';
+        token.style.fontWeight = 'normal';
+      });
+      
+      document.getElementById('tokenFieldSelector').value = '';
+      alert('כל הקישורים נוקו');
+    }
+
+    document.getElementById('pdfFile').addEventListener('change', async function(e) {
+      const files = e.target.files;
+      const output = document.getElementById('output');
+      output.innerHTML = '';
+      rows = [];
+      allDetails = [];
+      let filesArray = Array.from(files);
+
+      for (let fidx = 0; fidx < filesArray.length; fidx++) {
+        let file = filesArray[fidx];
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let allTokens = [];
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          const text = content.items.map(item => item.str.trim()).filter(Boolean);
+          allTokens.push(...text);
+        }
+
+        const indexedTokens = allTokens.map((token, idx) => `[${idx}] ${token}`).join(' | ');
+        allDetails.push({
+          name: file.name,
+          tokens: indexedTokens,
+          rowIdx: fidx,
+          allTokens
+        });
+
+        const t = allTokens;
+        const kmIndex = t.findIndex(token => /^\d{1,2}:\d{1,2}$/.test(token));
+        const indexMap = {
+          'קנ"מ': kmIndex,
+          'משקל': kmIndex + 40,
+          'מספר שרטוט': kmIndex + 43,
+          'תאריך': kmIndex + 7,
+          'כמות': kmIndex + 45,
+        };
+        const row = { 'שם קובץ': file.name, 'fileObj': file };
+        if (kmIndex !== -1) {
+          for (let key in indexMap) {
+            row[key] = t[indexMap[key]] || '';
+          }
+          row['חומר'] = t.find(x => /(AISI|ST|אלומיניום|נירוסטה|פלדה|Steel)/i.test(x)) || '';
+        }
+        rows.push(row);
+      }
+
+      renderTable();
+    });
+
+    function renderTable() {
+      const output = document.getElementById('output');
+      output.innerHTML = '';
+
+      headers = Array.from(new Set(rows.flatMap(r => Object.keys(r).filter(h=>h!=="fileObj"))));
+      headers = orderedHeaders.filter(h=>headers.includes(h)).concat(headers.filter(h=>!orderedHeaders.includes(h)));
+
+      let toolbarHtml = `<div class="toolbar">
+        <button class="btn export-btn" onclick="exportToExcel()">ייצוא לאקסל</button>
+        <span class="column-menu"><b>עמודות:</b> `;
+      for (let h of headers) {
+        toolbarHtml += `<label>
+          <input type="checkbox" value="${h}" ${visibleHeaders.includes(h) ? "checked" : ""} onchange="toggleColumn('${h}')">${h}
+        </label>`;
+      }
+      toolbarHtml += `</span></div>`;
+      output.innerHTML += toolbarHtml;
+
+      if (rows.length > 0) {
+        output.innerHTML += `<h2>טבלת נתונים שחולצו</h2>`;
+        
+        // כפתור ניהול מלא
+        output.innerHTML += `<div style="margin: 15px 0; text-align: center;">
+          <button class="btn" onclick="openPdfModal(0)" style="background: #28a745; font-size: 18px; padding: 12px 30px;">
+            📊 ניהול מלא - צפייה ועריכה של כל הקבצים
+          </button>
+        </div>`;
+        
+        let html = '<table id="mainTbl"><thead><tr>' + headers.filter(h=>visibleHeaders.includes(h)).map(h => `<th>${h}</th>`).join('') + '<th>פירוט</th></tr></thead><tbody>';
+        for (const [rowIdx, row] of rows.entries()) {
+          html += '<tr>' + headers.filter(h=>visibleHeaders.includes(h)).map(h => {
+            let v = (row && row[h]) || '';
+            let showV = v, cls = '';
+            if ([null, undefined, '', 'כמות:', 'מהדורה:', 'SHEET 1 OF 1', 'שם פרויקט:','שרטט:','נייד:',''].includes(v)) { 
+              cls = 'invalid'; 
+              showV += ' ?'; 
+            }
+            return `<td><input value="${showV}" class="${cls}" data-row="${rowIdx}" data-col="${h}" onchange="updateCell(this)"></td>`;
+          }).join('') +
+          `<td><button class="btn details-btn" onclick="toggleDetail(${rowIdx})">פירוט</button></td></tr>`;
+        }
+        html += '</tbody></table>';
+        output.innerHTML += html;
+      }
+
+      for (let det of allDetails) {
+        output.innerHTML += `
+          <div class="detail-section" id="detail-${det.rowIdx}">
+            <div class="file-title">${det.name}</div>
+            <div style="margin-bottom: 6px;"><b>טוקנים:</b></div>
+            <div class="token-box">${det.tokens}</div>
+          </div>
+        `;
+      }
+    }
+
+    function loadAllFilesTable() {
+      const container = document.getElementById('allFilesTableContainer');
+      if (!container) return;
+      
+      const relevantHeaders = headers.filter(h => h !== 'שם קובץ');
+      
+      let tableHtml = '<table><thead><tr>';
+      tableHtml += '<th>שם קובץ</th>';
+      relevantHeaders.forEach(header => {
+        tableHtml += `<th>${header}</th>`;
+      });
+      tableHtml += '<th>צפייה</th></tr></thead><tbody>';
+      
+      rows.forEach((row, rowIndex) => {
+        const fileName = row['שם קובץ'] || `קובץ ${rowIndex + 1}`;
+        const isSelected = rowIndex === currentFileIndex;
+        
+        tableHtml += `<tr class="${isSelected ? 'selected-row' : ''}" data-row-index="${rowIndex}">`;
+        tableHtml += `<td style="font-weight: bold; text-align: right; padding: 8px;">${fileName}</td>`;
+        
+        relevantHeaders.forEach(header => {
+          const value = row[header] || '';
+          const isInvalid = [null, undefined, '', 'כמות:', 'מהדורה:', 'SHEET 1 OF 1', 'שם פרויקט:','שרטט:','נייד:',''].includes(value);
+          const displayValue = isInvalid ? (value + ' ?') : value;
+          const className = isInvalid ? 'invalid' : '';
+          
+          tableHtml += `<td><input value="${displayValue}" class="${className}" 
+                        data-row="${rowIndex}" data-field="${header}" 
+                        onchange="markCellAsChanged(this)" 
+                        oninput="markCellAsChanged(this)"></td>`;
+        });
+        
+        tableHtml += `<td><button class="view-pdf-btn ${isSelected ? 'active' : ''}" 
+                      onclick="selectFileForViewing(${rowIndex})" 
+                      data-row="${rowIndex}">
+                      ${isSelected ? 'נצפה' : 'צפה'}
+                      </button></td>`;
+        tableHtml += '</tr>';
+      });
+      
+      tableHtml += '</tbody></table>';
+      container.innerHTML = tableHtml;
+    }
+
+    function openPdfModal(rowIdx = 0) {
+      document.getElementById('modalTitle').textContent = `ניהול וצפייה בכל קבצי ה-PDF`;
+      document.getElementById('pdfModal').style.display = 'block';
+      
+      loadAllFilesTable();
+      loadFieldsDirectly();
+      
+      if (rows.length > 0) {
+        switchToFile(rowIdx).then(() => {
+          loadInlineTokens();
+        });
+      }
+    }
+
+    function loadFieldsDirectly() {
+      const fieldSelector = document.getElementById('tokenFieldSelector');
+      if (!fieldSelector) return;
+      
+      const fieldsToShow = ['קנ"מ', 'משקל', 'מספר שרטוט', 'תאריך', 'כמות', 'חומר'];
+      
+      fieldSelector.innerHTML = '<option value="">בחר שדה...</option>';
+      
+      fieldsToShow.forEach(field => {
+        fieldSelector.innerHTML += `<option value="${field}">${field}</option>`;
+      });
+      
+      headers.forEach(header => {
+        if (header !== 'שם קובץ' && !fieldsToShow.includes(header)) {
+          fieldSelector.innerHTML += `<option value="${header}">${header}</option>`;
+        }
+      });
+      
+      // הוסף מאזין לשינוי היקף העדכון
+      const scopeRadios = document.querySelectorAll('input[name="updateScope"]');
+      scopeRadios.forEach(radio => {
+        radio.addEventListener('change', updateScopeDescription);
+      });
+      
+      updateScopeDescription();
+    }
+
+    function updateScopeDescription() {
+      const selectedScope = document.querySelector('input[name="updateScope"]:checked');
+      const description = document.getElementById('scopeDescription');
+      
+      if (!selectedScope || !description) return;
+      
+      if (selectedScope.value === 'current') {
+        description.textContent = 'יעדכן רק את הקובץ הנוכחי';
+        description.style.color = '#28a745';
+      } else {
+        description.textContent = `יעדכן את כל ${rows.length} הקבצים על בסיס מרחק מהעוגן`;
+        description.style.color = '#dc3545';
+      }
+    }
+
+    function selectFileForViewing(rowIndex) {
+      const tableRows = document.querySelectorAll('[data-row-index]');
+      const viewButtons = document.querySelectorAll('.view-pdf-btn');
+      
+      tableRows.forEach((row, index) => {
+        if (index === rowIndex) {
+          row.classList.add('selected-row');
+        } else {
+          row.classList.remove('selected-row');
+        }
+      });
+      
+      viewButtons.forEach((btn, index) => {
+        if (index === rowIndex) {
+          btn.classList.add('active');
+          btn.textContent = 'נצפה';
+        } else {
+          btn.classList.remove('active');
+          btn.textContent = 'צפה';
+        }
+      });
+      
+      switchToFile(rowIndex).then(() => {
+        loadInlineTokens();
+      });
+    }
+
+    async function switchToFile(fileIndex) {
+      const file = rows[fileIndex].fileObj;
+      if (!file) return;
+      
+      currentFileIndex = fileIndex;
+      document.getElementById('currentFileName').textContent = file.name;
+      document.getElementById('pdfContainer').innerHTML = '<div class="loading">טוען PDF...</div>';
+      
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        currentPdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        totalPages = currentPdf.numPages;
+        currentPage = 1;
+        currentScale = 1.0;
+        
+        document.getElementById('totalPages').textContent = totalPages;
+        document.getElementById('pageInput').value = currentPage;
+        document.getElementById('pageInput').max = totalPages;
+        document.getElementById('zoomLevel').textContent = '100%';
+        
+        await renderPdfPage();
+        updateNavigation();
+      } catch (error) {
+        console.error('Error loading PDF:', error);
+        document.getElementById('pdfContainer').innerHTML = 
+          '<div style="color: red; text-align: center; padding: 50px;">שגיאה בטעינת ה-PDF</div>';
+      }
+    }
+
+    function loadInlineTokens() {
+      const tokensContainer = document.getElementById('inlineTokens');
+      if (!tokensContainer) return;
+      
+      if (currentFileIndex === -1) {
+        tokensContainer.innerHTML = '<div style="color: #666; text-align: center; padding: 20px; direction: rtl;">בחר קובץ לצפייה בטוקנים</div>';
+        return;
+      }
+      
+      const detail = allDetails[currentFileIndex];
+      
+      if (detail && detail.allTokens && detail.allTokens.length > 0) {
+        const tokensHtml = detail.allTokens.map((token, idx) => 
+          `<span class="token-item" title="Index: ${idx} | Value: ${token}" 
+           onclick="selectInlineToken(${idx})" data-token-index="${idx}">
+           [${idx}] ${token}</span>`
+        ).join(' ');
+        tokensContainer.innerHTML = tokensHtml;
+      } else {
+        tokensContainer.innerHTML = '<div style="color: #666; text-align: center; padding: 20px; direction: rtl;">לא נמצאו טוקנים עבור קובץ זה</div>';
+      }
+    }
+
+    function markCellAsChanged(input) {
+      input.classList.remove('saved');
+      input.classList.add('changed');
+      
+      const saveBtn = document.getElementById('saveAllBtn');
+      if (saveBtn) {
+        saveBtn.style.background = '#dc3545';
+        saveBtn.textContent = 'יש שינויים - שמור הכל';
+        saveBtn.style.animation = 'pulse 1s infinite';
+      }
+    }
+
+    function saveAllChanges() {
+      const changedInputs = document.querySelectorAll('.all-files-table input.changed');
+      let totalChanges = 0;
+      
+      changedInputs.forEach(input => {
+        const rowIndex = parseInt(input.getAttribute('data-row'));
+        const field = input.getAttribute('data-field');
+        let value = input.value;
+        
+        if (value.endsWith(' ?')) {
+          value = value.slice(0, -2);
+        }
+        
+        if (rows[rowIndex]) {
+          rows[rowIndex][field] = value;
+          totalChanges++;
+        }
+        
+        input.classList.remove('changed', 'invalid');
+        input.classList.add('saved');
+      });
+      
+      renderTable();
+      
+      const saveBtn = document.getElementById('saveAllBtn');
+      if (saveBtn) {
+        saveBtn.style.background = '#28a745';
+        saveBtn.textContent = `נשמרו ${totalChanges} שינויים בהצלחה!`;
+        saveBtn.style.animation = 'none';
+        
+        setTimeout(() => {
+          saveBtn.style.background = '#28a745';
+          saveBtn.textContent = 'שמור את כל השינויים';
+        }, 3000);
+      }
+    }
+
+    function exportFromModal() {
+      exportToExcel();
+    }
+
+    function closePdfModal() {
+      document.getElementById('pdfModal').style.display = 'none';
+      currentPdf = null;
+      currentPage = 1;
+      totalPages = 0;
+      currentScale = 1.0;
+      currentFileIndex = -1;
+      selectedTokenIndex = -1;
+    }
+
+    function nextPage() {
+      if (currentPage < totalPages) {
+        currentPage++;
+        document.getElementById('pageInput').value = currentPage;
+        renderPdfPage();
+        updateNavigation();
+      }
+    }
+
+    function previousPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        document.getElementById('pageInput').value = currentPage;
+        renderPdfPage();
+        updateNavigation();
+      }
+    }
+
+    function goToPage() {
+      const pageInput = document.getElementById('pageInput');
+      const newPage = parseInt(pageInput.value);
+      if (newPage >= 1 && newPage <= totalPages && newPage !== currentPage) {
+        currentPage = newPage;
+        renderPdfPage();
+        updateNavigation();
+      } else {
+        pageInput.value = currentPage;
+      }
+    }
+
+    function zoomIn() {
+      currentScale = Math.min(currentScale * 1.2, 3.0);
+      document.getElementById('zoomLevel').textContent = Math.round(currentScale * 100) + '%';
+      renderPdfPage();
+    }
+
+    function zoomOut() {
+      currentScale = Math.max(currentScale / 1.2, 0.5);
+      document.getElementById('zoomLevel').textContent = Math.round(currentScale * 100) + '%';
+      renderPdfPage();
+    }
+
+    async function renderPdfPage() {
+      if (!currentPdf) return;
+      
+      try {
+        const page = await currentPdf.getPage(currentPage);
+        const viewport = page.getViewport({ scale: currentScale });
+        
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        canvas.className = 'pdf-page';
+        
+        // רנדר הPDF רגיל
+        const renderContext = {
+          canvasContext: context,
+          viewport: viewport
+        };
+        
+        await page.render(renderContext).promise;
+        
+        // הוסף שכבת טקסט אינטראקטיבית לזיהוי לחיצות
+        const textContent = await page.getTextContent();
+        const textLayerDiv = document.createElement('div');
+        textLayerDiv.style.position = 'absolute';
+        textLayerDiv.style.top = '0';
+        textLayerDiv.style.left = '0';
+        textLayerDiv.style.width = canvas.width + 'px';
+        textLayerDiv.style.height = canvas.height + 'px';
+        textLayerDiv.style.pointerEvents = 'auto';
+        textLayerDiv.style.cursor = 'pointer';
+        
+        // חשב אינדקס התחלה לעמוד הנוכחי
+        let startTokenIndex = 0;
+        if (currentPage > 1) {
+          for (let p = 1; p < currentPage; p++) {
+            try {
+              const prevPage = await currentPdf.getPage(p);
+              const prevContent = await prevPage.getTextContent();
+              startTokenIndex += prevContent.items.filter(item => item.str.trim()).length;
+            } catch (e) {
+              console.error('Error counting tokens in previous pages:', e);
+            }
+          }
+        }
+        
+        // צור אלמנטים לכל פריט טקסט
+        let currentTokenIndex = startTokenIndex;
+        textContent.items.forEach((item, index) => {
+          if (!item.str.trim()) return;
+          
+          const textElement = document.createElement('div');
+          textElement.style.position = 'absolute';
+          textElement.style.left = (item.transform[4] * currentScale) + 'px';
+          textElement.style.top = (canvas.height - (item.transform[5] * currentScale)) + 'px';
+          textElement.style.width = (item.width * currentScale) + 'px';
+          textElement.style.height = (item.height * currentScale) + 'px';
+          textElement.style.background = 'transparent';
+          textElement.style.border = '1px solid transparent';
+          textElement.style.cursor = 'pointer';
+          textElement.title = `טוקן ${currentTokenIndex}: "${item.str.trim()}"`;
+          
+          // הוסף אירוע לחיצה
+          const tokenIndex = currentTokenIndex;
+          textElement.addEventListener('click', () => {
+            console.log('Clicked on PDF token:', tokenIndex, item.str.trim());
+            selectTokenFromPdf(tokenIndex);
+          });
+          
+          textElement.addEventListener('mouseenter', () => {
+            textElement.style.background = 'rgba(255, 235, 59, 0.3)';
+            textElement.style.border = '1px solid #FFC107';
+          });
+          
+          textElement.addEventListener('mouseleave', () => {
+            if (selectedTokenIndex !== tokenIndex) {
+              textElement.style.background = 'transparent';
+              textElement.style.border = '1px solid transparent';
+            }
+          });
+          
+          textLayerDiv.appendChild(textElement);
+          currentTokenIndex++;
+        });
+        
+        // צור קונטיינר עם מיקום יחסי
+        const container = document.createElement('div');
+        container.style.position = 'relative';
+        container.style.display = 'inline-block';
+        container.appendChild(canvas);
+        container.appendChild(textLayerDiv);
+        
+        document.getElementById('pdfContainer').innerHTML = '';
+        document.getElementById('pdfContainer').appendChild(container);
+        
+      } catch (error) {
+        console.error('Error rendering PDF page:', error);
+        document.getElementById('pdfContainer').innerHTML = '<div style="color: red; text-align: center; padding: 50px;">שגיאה בהצגת העמוד</div>';
+      }
+    }
+
+    function selectTokenFromPdf(tokenIndex) {
+      console.log('Selecting token from PDF:', tokenIndex);
+      
+      // עדכן בחירה ברשימת הטוקנים
+      selectedTokenIndex = tokenIndex;
+      
+      const tokens = document.querySelectorAll('#inlineTokens .token-item');
+      tokens.forEach((token, idx) => {
+        if (idx === tokenIndex) {
+          token.style.background = '#ffeb3b';
+          token.style.borderColor = '#ffc107';
+          token.style.fontWeight = 'bold';
+          token.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          token.style.background = '#e8f0ff';
+          token.style.borderColor = '#d0d8e8';
+          token.style.fontWeight = 'normal';
+        }
+      });
+      
+      // הדגש בPDF
+      const textElements = document.querySelectorAll('#pdfContainer div div div');
+      textElements.forEach((element, idx) => {
+        if (element.title && element.title.includes(`טוקן ${tokenIndex}:`)) {
+          element.style.background = 'rgba(255, 235, 59, 0.6)';
+          element.style.border = '2px solid #FFC107';
+        } else if (element.style.background !== 'transparent') {
+          element.style.background = 'transparent';
+          element.style.border = '1px solid transparent';
+        }
+      });
+    }
+
+    function updateNavigation() {
+      document.getElementById('prevBtn').disabled = currentPage <= 1;
+      document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+    }
+
+    window.onclick = function(event) {
+      const pdfModal = document.getElementById('pdfModal');
+      if (event.target === pdfModal) {
+        closePdfModal();
+      }
+    };
+
+    document.addEventListener('keydown', function(event) {
+      const pdfModalOpen = document.getElementById('pdfModal').style.display === 'block';
+      
+      if (pdfModalOpen) {
+        switch(event.key) {
+          case 'Escape':
+            closePdfModal();
+            break;
+          case 'ArrowLeft':
+            nextPage();
+            break;
+          case 'ArrowRight':
+            previousPage();
+            break;
+          case '+':
+          case '=':
+            zoomIn();
+            break;
+          case '-':
+            zoomOut();
+            break;
+        }
+      }
+    });
+
+    function toggleDetail(idx) {
+      let el = document.getElementById(`detail-${idx}`);
+      if (!el) return;
+      el.style.display = el.style.display === 'block' ? 'none' : 'block';
+      if (el.style.display === 'block') el.scrollIntoView({behavior:"smooth",block:"start"});
+    }
+
+    function updateCell(input) {
+      const row = Number(input.getAttribute('data-row'));
+      const col = input.getAttribute('data-col');
+      rows[row][col] = input.value;
+      input.style.background = '#e4edfa';
+    }
+
+    function toggleColumn(header) {
+      if (visibleHeaders.includes(header)) {
+        visibleHeaders = visibleHeaders.filter(h=>h!==header);
+      } else {
+        visibleHeaders.push(header);
+      }
+      renderTable();
+    }
+
+    function exportToExcel() {
+      if (!rows.length) return;
+      const xlsxHeaders = headers.filter(h => visibleHeaders.includes(h));
+      const data = [xlsxHeaders];
+      for (const row of rows) {
+        data.push(xlsxHeaders.map(h => row[h] || ""));
+      }
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "נתונים");
+      XLSX.writeFile(wb, "pdf-table-extract.xlsx");
+    }
+
+  </script>
+</body>
+</html>
