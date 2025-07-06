@@ -688,6 +688,7 @@
     let visibleHeaders = [...headers];
     let columnFilters = {};
     let templates = [];
+    let savedTemplates = []; // In-memory storage instead of localStorage
     
     // File input
     document.getElementById('fileInput').addEventListener('change', function(e) {
@@ -931,42 +932,13 @@
       document.getElementById('pageNum').textContent = currentPage;
     }
     
-    // Add overlays for all defined positions
+    // Add overlays for all defined positions - DISABLED
     function addAllOverlays(container) {
-      if (!data || data.length === 0) return;
-      
-      // Add column position overlays only
-      Object.keys(positions).forEach(fieldName => {
-        const position = positions[fieldName];
-        if (position.page === currentPage) {
-          addOverlay(container, position, fieldName, '#28a745', 'עמודה: ' + fieldName);
-        }
-      });
+      // No overlays will be shown - positions are saved but not displayed
+      return;
     }
     
-    // Add single overlay
-    function addOverlay(container, position, label, color, title) {
-      const overlay = document.createElement('div');
-      overlay.style.position = 'absolute';
-      overlay.style.left = (position.x * scale) + 'px';
-      overlay.style.top = (position.y * scale) + 'px';
-      overlay.style.width = (position.width * scale) + 'px';
-      overlay.style.height = (position.height * scale) + 'px';
-      overlay.style.border = '2px solid ' + color;
-      overlay.style.background = color + '30'; // 30% opacity
-      overlay.style.pointerEvents = 'none';
-      overlay.style.zIndex = '99';
-      overlay.style.fontSize = '10px';
-      overlay.style.fontWeight = 'bold';
-      overlay.style.color = color;
-      overlay.style.padding = '2px 4px';
-      overlay.style.borderRadius = '3px';
-      overlay.style.whiteSpace = 'pre-line';
-      overlay.textContent = label;
-      overlay.title = title;
-      
-      container.appendChild(overlay);
-    }
+    // Add single overlay - REMOVED (no visual overlays)
     
     // Selection handlers
     function startSelect(e) {
@@ -1421,7 +1393,7 @@
       });
     }
     
-    // Template functions - Added missing functions
+    // Template functions - Updated to use in-memory storage
     function saveTemplate() {
       const templateName = document.getElementById('templateName').value.trim();
       if (!templateName) {
@@ -1436,8 +1408,78 @@
         visibleHeaders: [...visibleHeaders]
       };
       
-      // Save to localStorage
-      let savedTemplates = JSON.parse(localStorage.getItem('pdfTemplates') || '[]');
+      // Check if template already exists
+      const existingIndex = savedTemplates.findIndex(t => t.name === templateName);
+      if (existingIndex >= 0) {
+        if (confirm('תבנית בשם זה כבר קיימת. האם להחליף?')) {
+          savedTemplates[existingIndex] = template;
+        } else {
+          return;
+        }
+      } else {
+        savedTemplates.push(template);
+      }
+      
+      updateTemplateSelector();
+      alert('תבנית נשמרה בהצלחה');
+      document.getElementById('templateName').value = '';
+    }
+    
+    function loadTemplate() {
+      const selector = document.getElementById('templateSelector');
+      const templateName = selector.value;
+      
+      if (!templateName) return;
+      
+      const template = savedTemplates.find(t => t.name === templateName);
+      
+      if (template) {
+        positions = {...template.positions};
+        customHeaders = [...template.customHeaders];
+        visibleHeaders = [...template.visibleHeaders];
+        
+        // Update data with new custom headers
+        data.forEach(row => {
+          customHeaders.forEach(header => {
+            if (!(header in row)) {
+              row[header] = '';
+            }
+          });
+        });
+        
+        renderColumnFilters();
+        renderTable();
+        alert('תבנית נטענה בהצלחה');
+      }
+    }
+    
+    function deleteTemplate() {
+      const selector = document.getElementById('templateSelector');
+      const templateName = selector.value;
+      
+      if (!templateName) {
+        alert('אנא בחר תבנית למחיקה');
+        return;
+      }
+      
+      if (confirm('האם למחוק את התבנית "' + templateName + '"?')) {
+        savedTemplates = savedTemplates.filter(t => t.name !== templateName);
+        updateTemplateSelector();
+        alert('תבנית נמחקה');
+      }
+    }
+    
+    function updateTemplateSelector() {
+      const selector = document.getElementById('templateSelector');
+      
+      selector.innerHTML = '<option value="">טען תבנית...</option>';
+      savedTemplates.forEach(template => {
+        const option = document.createElement('option');
+        option.value = template.name;
+        option.textContent = template.name;
+        selector.appendChild(option);
+      });
+    }
       
       // Check if template already exists
       const existingIndex = savedTemplates.findIndex(t => t.name === templateName);
@@ -1455,7 +1497,7 @@
       updateTemplateSelector();
       alert('תבנית נשמרה בהצלחה');
       document.getElementById('templateName').value = '';
-    }
+    
     
     function loadTemplate() {
       const selector = document.getElementById('templateSelector');
