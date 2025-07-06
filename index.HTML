@@ -371,6 +371,10 @@
       margin-right: 2px;
     }
     
+    .calc-btn:hover {
+      background: #138496;
+    }
+    
     .filter-dropdown {
       position: relative;
       display: inline-block;
@@ -450,19 +454,6 @@
       background: #4a5cc7;
     }
     
-    .calc-btn:hover {
-      background: #138496;
-    }
-    
-    .template-info {
-      background: #e8f0ff;
-      border: 1px solid #6377e2;
-      border-radius: 6px;
-      padding: 10px;
-      margin-bottom: 15px;
-      font-size: 12px;
-    }
-    
     .calculator-modal {
       display: none;
       position: fixed;
@@ -526,11 +517,6 @@
       100% { transform: rotate(360deg); }
     }
     
-    .invalid { 
-      color: #b32020; 
-      font-weight: bold; 
-    }
-    
     @media (max-width: 1200px) {
       .container {
         flex-direction: column;
@@ -577,9 +563,7 @@
       
       <div style="margin-bottom: 15px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
         <h4 style="margin: 0 0 10px 0;">סינון עמודות:</h4>
-        <div id="columnFilters" style="display: flex; flex-wrap: wrap; gap: 10px;">
-          <!-- Column filters will be added here -->
-        </div>
+        <div id="columnFilters" style="display: flex; flex-wrap: wrap; gap: 10px;"></div>
       </div>
       <div id="tableContainer"></div>
     </div>
@@ -620,7 +604,6 @@
     </div>
   </div>
 
-  <!-- Calculator Modal -->
   <div id="calculatorModal" class="calculator-modal">
     <div class="calculator-content">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -662,46 +645,43 @@
   </div>
 
   <script>
-    // Setup
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    // Setup PDF.js - Fixed worker configuration
+    if (typeof pdfjsLib !== 'undefined') {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    }
     
-    // Variables - Fixed initialization
-    let files = [];
-    let currentPdf = null;
-    let currentPage = 1;
-    let totalPages = 0;
-    let scale = 1;
-    let currentField = '';
-    let positions = {};
-    let selecting = false;
-    let startPos = {};
-    let currentSelection = null; // Added missing variable
-    let currentFileIndex = 0; // Added missing variable
-    let cellPositions = {};
-    let currentCellMode = false; // Added missing variable
-    let currentCellKey = ''; // Added missing variable
-    let currentCalculatorRow = -1; // Moved here for proper scope
+    // Global variables
+    var files = [];
+    var currentPdf = null;
+    var currentPage = 1;
+    var totalPages = 0;
+    var scale = 1;
+    var currentField = '';
+    var positions = {};
+    var selecting = false;
+    var startPos = {};
+    var currentSelection = null;
+    var currentFileIndex = 0;
+    var currentCalculatorRow = -1;
     
-    const headers = ['שם קובץ', 'קנ״מ', 'משקל', 'מספר שרטוט', 'תאריך', 'כמות', 'חומר', 'היקף', 'חורים', 'מחיר'];
-    let data = [];
-    let customHeaders = [];
-    let visibleHeaders = [...headers];
-    let columnFilters = {};
-    let templates = [];
-    let savedTemplates = []; // In-memory storage instead of localStorage
-    
-    // File input
+    var headers = ['שם קובץ', 'קנ״מ', 'משקל', 'מספר שרטוט', 'תאריך', 'כמות', 'חומר', 'היקף', 'חורים', 'מחיר'];
+    var data = [];
+    var customHeaders = [];
+    var visibleHeaders = headers.slice();
+    var columnFilters = {};
+    var savedTemplates = [];
+
+    // File input handler
     document.getElementById('fileInput').addEventListener('change', function(e) {
-      files = Array.from(e.target.files);
+      files = Array.prototype.slice.call(e.target.files);
       currentFileIndex = 0;
       
-      // Initialize data with all headers
-      const allHeaders = [...headers, ...customHeaders];
-      data = files.map(f => {
-        const row = { 'שם קובץ': f.name };
-        allHeaders.slice(1).forEach(header => {
-          row[header] = '';
-        });
+      var allHeaders = headers.concat(customHeaders);
+      data = files.map(function(f) {
+        var row = { 'שם קובץ': f.name };
+        for (var i = 1; i < allHeaders.length; i++) {
+          row[allHeaders[i]] = '';
+        }
         return row;
       });
       
@@ -713,24 +693,22 @@
         loadPdf(files[0]);
       }
     });
-    
-    // Update file selector dropdown
+
     function updateFileSelector() {
-      const selector = document.getElementById('fileSelector');
+      var selector = document.getElementById('fileSelector');
       selector.innerHTML = '<option value="">בחר קובץ...</option>';
       
-      files.forEach((file, index) => {
-        const option = document.createElement('option');
-        option.value = index;
-        option.textContent = file.name;
-        if (index === currentFileIndex) {
+      for (var i = 0; i < files.length; i++) {
+        var option = document.createElement('option');
+        option.value = i;
+        option.textContent = files[i].name;
+        if (i === currentFileIndex) {
           option.selected = true;
         }
         selector.appendChild(option);
-      });
+      }
     }
-    
-    // View file function
+
     function viewFile(fileIndex) {
       if (fileIndex >= 0 && fileIndex < files.length) {
         currentFileIndex = fileIndex;
@@ -738,46 +716,44 @@
         renderTable();
       }
     }
-    
-    // Change file function
+
     function changeFile() {
-      const selector = document.getElementById('fileSelector');
-      const selectedIndex = parseInt(selector.value);
+      var selector = document.getElementById('fileSelector');
+      var selectedIndex = parseInt(selector.value);
       
       if (!isNaN(selectedIndex) && selectedIndex >= 0 && selectedIndex < files.length) {
         viewFile(selectedIndex);
       }
     }
-    
-    // Update data function - Added missing function
+
     function updateData(rowIndex, columnName, value) {
       if (data[rowIndex]) {
         data[rowIndex][columnName] = value;
       }
     }
-    
-    // Render table
+
     function renderTable() {
       if (!data || data.length === 0) {
         document.getElementById('tableContainer').innerHTML = '<p>אנא העלה קבצי PDF</p>';
         return;
       }
       
-      const allHeaders = [...headers, ...customHeaders];
+      var allHeaders = headers.concat(customHeaders);
+      var html = '<table><thead><tr>';
       
-      let html = '<table><thead><tr>';
-      
-      // Add "View" column first
       html += '<th>צפייה</th>';
       
-      allHeaders.filter(h => visibleHeaders.includes(h)).forEach(h => {
+      for (var i = 0; i < allHeaders.length; i++) {
+        var h = allHeaders[i];
+        if (visibleHeaders.indexOf(h) === -1) continue;
+        
         if (h === 'שם קובץ') {
           html += '<th>' + h + '<div class="filter-dropdown">';
           html += '<button class="filter-btn" onclick="toggleFilter(\'' + h + '\')">🔽</button>';
           html += '<div class="filter-menu" id="filter-' + h + '"></div>';
           html += '</div></th>';
         } else {
-          let cls = positions[h] ? 'btn-pos set' : 'btn-pos';
+          var cls = positions[h] ? 'btn-pos set' : 'btn-pos';
           if (currentField === h) cls += ' active';
           html += '<th>' + h + '<div class="filter-dropdown">';
           html += '<button class="filter-btn" onclick="toggleFilter(\'' + h + '\')">🔽</button>';
@@ -786,25 +762,29 @@
           html += positions[h] ? 'מוגדר' : 'הגדר';
           html += '</button>';
           
-          // Add delete button for custom columns
-          if (customHeaders.includes(h)) {
+          if (customHeaders.indexOf(h) !== -1) {
             html += '<br><button class="delete-column-btn" onclick="deleteCustomColumn(\'' + h + '\')" title="מחק עמודה">🗑️</button>';
           }
-          
           html += '</th>';
         }
-      });
+      }
       html += '</tr></thead><tbody>';
       
-      data.forEach((row, i) => {
-        // Check if row should be visible based on filters
-        let shouldShow = true;
-        for (const [filterCol, filterValues] of Object.entries(columnFilters)) {
+      for (var i = 0; i < data.length; i++) {
+        var row = data[i];
+        var shouldShow = true;
+        
+        for (var filterCol in columnFilters) {
+          var filterValues = columnFilters[filterCol];
           if (filterValues.length > 0) {
-            const cellValue = (row[filterCol] || '').toString().toLowerCase();
-            const hasMatch = filterValues.some(filterValue => 
-              cellValue.includes(filterValue.toLowerCase())
-            );
+            var cellValue = (row[filterCol] || '').toString().toLowerCase();
+            var hasMatch = false;
+            for (var j = 0; j < filterValues.length; j++) {
+              if (cellValue.indexOf(filterValues[j].toLowerCase()) !== -1) {
+                hasMatch = true;
+                break;
+              }
+            }
             if (!hasMatch) {
               shouldShow = false;
               break;
@@ -812,21 +792,22 @@
           }
         }
         
-        if (!shouldShow) return;
+        if (!shouldShow) continue;
         
-        const isCurrentFile = (typeof currentFileIndex !== 'undefined' && i === currentFileIndex);
+        var isCurrentFile = (i === currentFileIndex);
         html += '<tr' + (isCurrentFile ? ' style="background-color: #e3f2fd;"' : '') + '>';
         
-        // Add view button for each row
         html += '<td><button class="view-btn ' + (isCurrentFile ? 'active' : '') + '" onclick="viewFile(' + i + ')">';
         html += isCurrentFile ? 'נצפה' : 'צפה';
         html += '</button></td>';
         
-        allHeaders.filter(h => visibleHeaders.includes(h)).forEach(h => {
-          const cellValue = row[h] || '';
+        for (var j = 0; j < allHeaders.length; j++) {
+          var h = allHeaders[j];
+          if (visibleHeaders.indexOf(h) === -1) continue;
+          
+          var cellValue = row[h] || '';
           
           if (h === 'היקף') {
-            // Special handling for perimeter calculation
             html += '<td>';
             html += '<input value="' + cellValue + '" onchange="updateData(' + i + ',\'' + h + '\',this.value)" style="width: 70%;">';
             html += '<button class="calc-btn" onclick="openPerimeterCalc(' + i + ')" title="מחשבון היקף">🧮</button>';
@@ -836,15 +817,14 @@
             html += '<input value="' + cellValue + '" onchange="updateData(' + i + ',\'' + h + '\',this.value)">';
             html += '</td>';
           }
-        });
+        }
         html += '</tr>';
-      });
+      }
       
       html += '</tbody></table>';
       document.getElementById('tableContainer').innerHTML = html;
     }
-    
-    // Set field for positioning
+
     function setField(field) {
       currentField = field;
       document.getElementById('currentField').textContent = field;
@@ -854,14 +834,23 @@
       currentSelection = null;
       renderTable();
     }
-    
-    // Load PDF
-    async function loadPdf(file) {
-      try {
-        console.log('Loading PDF:', file.name);
-        const buffer = await file.arrayBuffer();
-        currentPdf = await pdfjsLib.getDocument(buffer).promise;
-        totalPages = currentPdf.numPages;
+
+    function loadPdf(file) {
+      if (typeof pdfjsLib === 'undefined') {
+        alert('PDF.js לא נטען כהלכה. אנא רענן את העמוד.');
+        return;
+      }
+      
+      file.arrayBuffer().then(function(buffer) {
+        var loadingTask = pdfjsLib.getDocument({
+          data: buffer,
+          cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/cmaps/',
+          cMapPacked: true
+        });
+        return loadingTask.promise;
+      }).then(function(pdf) {
+        currentPdf = pdf;
+        totalPages = pdf.numPages;
         currentPage = 1;
         scale = 1;
         document.getElementById('totalPages').textContent = totalPages;
@@ -869,111 +858,86 @@
         
         updateFileSelector();
         renderPage();
-      } catch (e) {
+      }).catch(function(e) {
         console.error('PDF load error:', e);
-        alert('שגיאה בטעינת הקובץ: ' + file.name);
-      }
+        alert('שגיאה בטעינת הקובץ: ' + file.name + '\nהשגיאה: ' + e.message);
+      });
     }
-    
-    // Render PDF page
-    async function renderPage() {
+
+    function renderPage() {
       if (!currentPdf) return;
       
-      const page = await currentPdf.getPage(currentPage);
-      const viewport = page.getViewport({ scale });
-      
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      canvas.className = 'pdf-page';
-      canvas.style.display = 'block';
-      canvas.style.margin = '0 auto';
-      
-      await page.render({ canvasContext: ctx, viewport }).promise;
-      
-      // Create container with relative positioning
-      const canvasContainer = document.createElement('div');
-      canvasContainer.style.position = 'relative';
-      canvasContainer.style.display = 'inline-block';
-      canvasContainer.appendChild(canvas);
-      
-      const container = document.getElementById('pdfContainer');
-      container.innerHTML = '';
-      container.appendChild(canvasContainer);
-      
-      // Add overlays for all positions on current page
-      addAllOverlays(canvasContainer);
-      
-      // Add event listeners AFTER canvas is in DOM
-      if (currentField) {
-        console.log('Adding event listeners for field:', currentField);
-        canvas.style.cursor = 'crosshair';
+      currentPdf.getPage(currentPage).then(function(page) {
+        var viewport = page.getViewport({ scale: scale });
         
-        canvas.onmousedown = function(e) {
-          console.log('Mouse down detected');
-          startSelect(e);
-        };
+        var canvas = document.createElement('canvas');
+        var ctx = canvas.getContext('2d');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        canvas.className = 'pdf-page';
+        canvas.style.display = 'block';
+        canvas.style.margin = '0 auto';
         
-        canvas.onmousemove = function(e) {
-          if (selecting) {
-            updateSelect(e);
+        return page.render({ canvasContext: ctx, viewport: viewport }).promise.then(function() {
+          var canvasContainer = document.createElement('div');
+          canvasContainer.style.position = 'relative';
+          canvasContainer.style.display = 'inline-block';
+          canvasContainer.appendChild(canvas);
+          
+          var container = document.getElementById('pdfContainer');
+          container.innerHTML = '';
+          container.appendChild(canvasContainer);
+          
+          if (currentField) {
+            canvas.style.cursor = 'crosshair';
+            
+            canvas.onmousedown = function(e) {
+              startSelect(e);
+            };
+            
+            canvas.onmousemove = function(e) {
+              if (selecting) {
+                updateSelect(e);
+              }
+            };
+            
+            canvas.onmouseup = function(e) {
+              endSelect(e);
+            };
+          } else {
+            canvas.style.cursor = 'default';
           }
-        };
-        
-        canvas.onmouseup = function(e) {
-          console.log('Mouse up detected');
-          endSelect(e);
-        };
-      } else {
-        canvas.style.cursor = 'default';
-      }
-      
-      document.getElementById('pageNum').textContent = currentPage;
+          
+          document.getElementById('pageNum').textContent = currentPage;
+        });
+      });
     }
-    
-    // Add overlays for all defined positions - DISABLED
-    function addAllOverlays(container) {
-      // No overlays will be shown - positions are saved but not displayed
-      return;
-    }
-    
-    // Add single overlay - REMOVED (no visual overlays)
-    
-    // Selection handlers
+
     function startSelect(e) {
-      console.log('Start select called, currentField:', currentField);
-      if (!currentField) {
-        console.log('No current field selected');
-        return;
-      }
+      if (!currentField) return;
       
       selecting = true;
-      const rect = e.target.getBoundingClientRect();
+      var rect = e.target.getBoundingClientRect();
       startPos = {
         x: e.clientX - rect.left,
         y: e.clientY - rect.top
       };
-      
-      console.log('Selection started at:', startPos);
       e.preventDefault();
     }
-    
+
     function updateSelect(e) {
       if (!selecting) return;
       
-      const rect = e.target.getBoundingClientRect();
-      const current = {
+      var rect = e.target.getBoundingClientRect();
+      var current = {
         x: e.clientX - rect.left,
         y: e.clientY - rect.top
       };
       
-      // Remove existing selection box
-      const existing = document.querySelector('.selection-box');
+      var existing = document.querySelector('.selection-box');
       if (existing) existing.remove();
       
-      // Create new selection box
-      const box = document.createElement('div');
+      var box = document.createElement('div');
       box.className = 'selection-box';
       box.style.position = 'absolute';
       box.style.left = Math.min(startPos.x, current.x) + 'px';
@@ -985,89 +949,82 @@
       box.style.pointerEvents = 'none';
       box.style.zIndex = '1000';
       
-      // Add to canvas parent
       e.target.parentNode.appendChild(box);
     }
-    
-    async function endSelect(e) {
-      console.log('End select called, selecting:', selecting);
+
+    function endSelect(e) {
       if (!selecting) return;
       
       selecting = false;
       
-      const rect = e.target.getBoundingClientRect();
-      const end = {
+      var rect = e.target.getBoundingClientRect();
+      var end = {
         x: e.clientX - rect.left,
         y: e.clientY - rect.top
       };
       
-      const left = Math.min(startPos.x, end.x);
-      const top = Math.min(startPos.y, end.y);
-      const width = Math.abs(end.x - startPos.x);
-      const height = Math.abs(end.y - startPos.y);
-      
-      console.log('Selection area:', { left, top, width, height });
+      var left = Math.min(startPos.x, end.x);
+      var top = Math.min(startPos.y, end.y);
+      var width = Math.abs(end.x - startPos.x);
+      var height = Math.abs(end.y - startPos.y);
       
       if (width > 10 && height > 10) {
-        const page = await currentPdf.getPage(currentPage);
-        const viewport = page.getViewport({ scale });
-        
-        currentSelection = {
-          x: left / scale,
-          y: (viewport.height - (top + height)) / scale,
-          width: width / scale,
-          height: height / scale,
-          page: currentPage
-        };
-        
-        console.log('PDF coordinates:', currentSelection);
-        
-        const text = await extractText(currentSelection);
-        console.log('Extracted text:', text);
-        
-        const textResultElement = document.getElementById('textResult');
-        if (textResultElement) {
-          textResultElement.textContent = 'טקסט שזוהה: ' + (text || 'לא נמצא טקסט');
-          textResultElement.style.display = 'block';
-        }
-        
-        const saveBtnElement = document.getElementById('saveBtn');
-        if (saveBtnElement) {
-          saveBtnElement.disabled = false;
-        }
+        currentPdf.getPage(currentPage).then(function(page) {
+          var viewport = page.getViewport({ scale: scale });
+          
+          currentSelection = {
+            x: left / scale,
+            y: (viewport.height - (top + height)) / scale,
+            width: width / scale,
+            height: height / scale,
+            page: currentPage
+          };
+          
+          return extractText(currentSelection);
+        }).then(function(text) {
+          var textResultElement = document.getElementById('textResult');
+          if (textResultElement) {
+            textResultElement.textContent = 'טקסט שזוהה: ' + (text || 'לא נמצא טקסט');
+            textResultElement.style.display = 'block';
+          }
+          
+          var saveBtnElement = document.getElementById('saveBtn');
+          if (saveBtnElement) {
+            saveBtnElement.disabled = false;
+          }
+        });
       }
       
-      // Remove selection box after a short delay
-      setTimeout(() => {
-        const box = document.querySelector('.selection-box');
+      setTimeout(function() {
+        var box = document.querySelector('.selection-box');
         if (box) box.remove();
       }, 1000);
       
       e.preventDefault();
     }
-    
-    // Extract text from coordinates
-    async function extractText(coords) {
-      if (!currentPdf) return '';
+
+    function extractText(coords) {
+      if (!currentPdf) return Promise.resolve('');
       
-      const page = await currentPdf.getPage(coords.page);
-      const content = await page.getTextContent();
-      
-      let texts = [];
-      content.items.forEach(item => {
-        const x = item.transform[4];
-        const y = item.transform[5];
-        
-        if (x >= coords.x && x <= coords.x + coords.width &&
-            y >= coords.y && y <= coords.y + coords.height) {
-          texts.push(item.str.trim());
+      return currentPdf.getPage(coords.page).then(function(page) {
+        return page.getTextContent();
+      }).then(function(content) {
+        var texts = [];
+        for (var i = 0; i < content.items.length; i++) {
+          var item = content.items[i];
+          var x = item.transform[4];
+          var y = item.transform[5];
+          
+          if (x >= coords.x && x <= coords.x + coords.width &&
+              y >= coords.y && y <= coords.y + coords.height) {
+            texts.push(item.str.trim());
+          }
         }
+        
+        return texts.filter(function(t) { return t; }).join(' ');
       });
-      
-      return texts.filter(t => t).join(' ');
     }
-    
-    // Save position
+
     function savePosition() {
       if (!currentSelection || !currentField) return;
       
@@ -1078,88 +1035,118 @@
       document.getElementById('fieldInfo').style.display = 'none';
       renderTable();
     }
-    
-    // Extract from all files
-    async function extractAll() {
+
+    function extractAll() {
       if (Object.keys(positions).length === 0) {
         alert('אנא הגדר לפחות מיקום אחד לפני החילוץ');
         return;
       }
       
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const buffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument(buffer).promise;
-        
-        const allHeaders = [...headers, ...customHeaders];
-        
-        for (const field of allHeaders) {
-          if (field === 'שם קובץ') continue;
-          
-          const pos = positions[field];
-          
-          if (pos && pos.page <= pdf.numPages) {
-            const page = await pdf.getPage(pos.page);
-            const content = await page.getTextContent();
-            
-            let texts = [];
-            content.items.forEach(item => {
-              const x = item.transform[4];
-              const y = item.transform[5];
-              
-              if (x >= pos.x && x <= pos.x + pos.width &&
-                  y >= pos.y && y <= pos.y + pos.height) {
-                texts.push(item.str.trim());
-              }
-            });
-            
-            data[i][field] = texts.filter(t => t).join(' ');
-          }
-        }
+      if (typeof pdfjsLib === 'undefined') {
+        alert('PDF.js לא נטען כהלכה. אנא רענן את העמוד.');
+        return;
       }
       
-      renderTable();
-      alert('חילוץ הושלם!');
+      var promises = [];
+      
+      for (var i = 0; i < files.length; i++) {
+        (function(fileIndex) {
+          var file = files[fileIndex];
+          
+          var promise = file.arrayBuffer().then(function(buffer) {
+            var loadingTask = pdfjsLib.getDocument({
+              data: buffer,
+              cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/cmaps/',
+              cMapPacked: true
+            });
+            return loadingTask.promise;
+          }).then(function(pdf) {
+            var allHeaders = headers.concat(customHeaders);
+            var fieldPromises = [];
+            
+            for (var j = 0; j < allHeaders.length; j++) {
+              var field = allHeaders[j];
+              if (field === 'שם קובץ') continue;
+              
+              var pos = positions[field];
+              
+              if (pos && pos.page <= pdf.numPages) {
+                (function(currentField, currentPos, currentFileIndex) {
+                  var fieldPromise = pdf.getPage(currentPos.page).then(function(page) {
+                    return page.getTextContent();
+                  }).then(function(content) {
+                    var texts = [];
+                    for (var k = 0; k < content.items.length; k++) {
+                      var item = content.items[k];
+                      var x = item.transform[4];
+                      var y = item.transform[5];
+                      
+                      if (x >= currentPos.x && x <= currentPos.x + currentPos.width &&
+                          y >= currentPos.y && y <= currentPos.y + currentPos.height) {
+                        texts.push(item.str.trim());
+                      }
+                    }
+                    
+                    data[currentFileIndex][currentField] = texts.filter(function(t) { return t; }).join(' ');
+                  });
+                  
+                  fieldPromises.push(fieldPromise);
+                })(field, pos, fileIndex);
+              }
+            }
+            
+            return Promise.all(fieldPromises);
+          });
+          
+          promises.push(promise);
+        })(i);
+      }
+      
+      Promise.all(promises).then(function() {
+        renderTable();
+        alert('חילוץ הושלם!');
+      }).catch(function(error) {
+        console.error('Extract error:', error);
+        alert('שגיאה בחילוץ הנתונים: ' + error.message);
+      });
     }
-    
-    // Navigation functions
+
     function nextPage() {
       if (currentPage < totalPages) {
         currentPage++;
         renderPage();
       }
     }
-    
+
     function prevPage() {
       if (currentPage > 1) {
         currentPage--;
         renderPage();
       }
     }
-    
+
     function zoomIn() {
       scale = Math.min(scale * 1.2, 3);
       document.getElementById('zoom').textContent = Math.round(scale * 100) + '%';
       renderPage();
     }
-    
+
     function zoomOut() {
       scale = Math.max(scale / 1.2, 0.5);
       document.getElementById('zoom').textContent = Math.round(scale * 100) + '%';
       renderPage();
     }
-    
-    // Calculator functions
+
     function openPerimeterCalc(rowIndex) {
       currentCalculatorRow = rowIndex;
       document.getElementById('calculatorModal').style.display = 'block';
     }
-    
+
     function closeCalculator() {
       document.getElementById('calculatorModal').style.display = 'none';
       resetCalculator();
     }
-    
+
     function resetCalculator() {
       document.getElementById('length1').value = '';
       document.getElementById('width1').value = '';
@@ -1169,22 +1156,22 @@
       document.getElementById('width3').value = '';
       document.getElementById('calcResult').textContent = 'היקף כולל: 0 ס"מ';
     }
-    
+
     function calculatePerimeter() {
-      const l1 = parseFloat(document.getElementById('length1').value) || 0;
-      const w1 = parseFloat(document.getElementById('width1').value) || 0;
-      const l2 = parseFloat(document.getElementById('length2').value) || 0;
-      const w2 = parseFloat(document.getElementById('width2').value) || 0;
-      const l3 = parseFloat(document.getElementById('length3').value) || 0;
-      const w3 = parseFloat(document.getElementById('width3').value) || 0;
+      var l1 = parseFloat(document.getElementById('length1').value) || 0;
+      var w1 = parseFloat(document.getElementById('width1').value) || 0;
+      var l2 = parseFloat(document.getElementById('length2').value) || 0;
+      var w2 = parseFloat(document.getElementById('width2').value) || 0;
+      var l3 = parseFloat(document.getElementById('length3').value) || 0;
+      var w3 = parseFloat(document.getElementById('width3').value) || 0;
       
-      const perimeter1 = l1 && w1 ? 2 * (l1 + w1) : 0;
-      const perimeter2 = l2 && w2 ? 2 * (l2 + w2) : 0;
-      const perimeter3 = l3 && w3 ? 2 * (l3 + w3) : 0;
+      var perimeter1 = l1 && w1 ? 2 * (l1 + w1) : 0;
+      var perimeter2 = l2 && w2 ? 2 * (l2 + w2) : 0;
+      var perimeter3 = l3 && w3 ? 2 * (l3 + w3) : 0;
       
-      const totalPerimeter = perimeter1 + perimeter2 + perimeter3;
+      var totalPerimeter = perimeter1 + perimeter2 + perimeter3;
       
-      let resultText = 'היקף כולל: ' + totalPerimeter.toFixed(2) + ' ס"מ';
+      var resultText = 'היקף כולל: ' + totalPerimeter.toFixed(2) + ' ס"מ';
       if (perimeter1 > 0) resultText += '\nמלבן 1: ' + perimeter1.toFixed(2) + ' ס"מ';
       if (perimeter2 > 0) resultText += '\nמלבן 2: ' + perimeter2.toFixed(2) + ' ס"מ';
       if (perimeter3 > 0) resultText += '\nמלבן 3: ' + perimeter3.toFixed(2) + ' ס"מ';
@@ -1192,50 +1179,54 @@
       document.getElementById('calcResult').style.whiteSpace = 'pre-line';
       document.getElementById('calcResult').textContent = resultText;
     }
-    
+
     function saveCalculatedPerimeter() {
-      const resultText = document.getElementById('calcResult').textContent;
-      const totalMatch = resultText.match(/היקף כולל: ([\d.]+)/);
+      var resultText = document.getElementById('calcResult').textContent;
+      var totalMatch = resultText.match(/היקף כולל: ([\d.]+)/);
       
       if (totalMatch && currentCalculatorRow >= 0) {
-        const totalPerimeter = totalMatch[1];
+        var totalPerimeter = totalMatch[1];
         data[currentCalculatorRow]['היקף'] = totalPerimeter + ' ס"מ';
         renderTable();
         closeCalculator();
         alert('היקף נשמר בטבלה: ' + totalPerimeter + ' ס"מ');
       }
     }
-    
-    // Export to Excel
+
     function exportExcel() {
       if (data.length === 0) return;
       
-      const allHeaders = [...headers, ...customHeaders];
-      const exportData = data.map(row => {
-        const exportRow = {};
-        allHeaders.filter(h => visibleHeaders.includes(h)).forEach(header => {
-          exportRow[header] = row[header] || '';
-        });
-        return exportRow;
-      });
+      var allHeaders = headers.concat(customHeaders);
+      var exportData = [];
       
-      const ws = XLSX.utils.json_to_sheet(exportData);
-      const wb = XLSX.utils.book_new();
+      for (var i = 0; i < data.length; i++) {
+        var row = data[i];
+        var exportRow = {};
+        for (var j = 0; j < allHeaders.length; j++) {
+          var header = allHeaders[j];
+          if (visibleHeaders.indexOf(header) !== -1) {
+            exportRow[header] = row[header] || '';
+          }
+        }
+        exportData.push(exportRow);
+      }
+      
+      var ws = XLSX.utils.json_to_sheet(exportData);
+      var wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'נתונים');
       XLSX.writeFile(wb, 'נתונים.xlsx');
     }
-    
-    // Add custom column
+
     function addCustomColumn() {
-      const input = document.getElementById('newColumnName');
-      const columnName = input.value.trim();
+      var input = document.getElementById('newColumnName');
+      var columnName = input.value.trim();
       
       if (!columnName) {
         alert('אנא הכנס שם עמודה');
         return;
       }
       
-      if (headers.includes(columnName) || customHeaders.includes(columnName)) {
+      if (headers.indexOf(columnName) !== -1 || customHeaders.indexOf(columnName) !== -1) {
         alert('עמודה זו כבר קיימת');
         return;
       }
@@ -1243,10 +1234,9 @@
       customHeaders.push(columnName);
       visibleHeaders.push(columnName);
       
-      // Add column to existing data
-      data.forEach(row => {
-        row[columnName] = '';
-      });
+      for (var i = 0; i < data.length; i++) {
+        data[i][columnName] = '';
+      }
       
       input.value = '';
       renderColumnFilters();
@@ -1254,68 +1244,71 @@
       
       alert('עמודה "' + columnName + '" נוספה בהצלחה');
     }
-    
-    // Delete custom column
+
     function deleteCustomColumn(columnName) {
       if (confirm('האם למחוק את העמודה "' + columnName + '"?')) {
-        customHeaders = customHeaders.filter(h => h !== columnName);
-        visibleHeaders = visibleHeaders.filter(h => h !== columnName);
+        var index = customHeaders.indexOf(columnName);
+        if (index !== -1) {
+          customHeaders.splice(index, 1);
+        }
         
-        // Remove from positions if exists
+        index = visibleHeaders.indexOf(columnName);
+        if (index !== -1) {
+          visibleHeaders.splice(index, 1);
+        }
+        
         delete positions[columnName];
         
-        // Remove from data
-        data.forEach(row => {
-          delete row[columnName];
-        });
+        for (var i = 0; i < data.length; i++) {
+          delete data[i][columnName];
+        }
         
         renderColumnFilters();
         renderTable();
       }
     }
-    
-    // Render column filters
+
     function renderColumnFilters() {
-      const allHeaders = [...headers, ...customHeaders];
-      const container = document.getElementById('columnFilters');
+      var allHeaders = headers.concat(customHeaders);
+      var container = document.getElementById('columnFilters');
       
-      let html = '';
-      allHeaders.forEach(header => {
-        const checked = visibleHeaders.includes(header) ? 'checked' : '';
+      var html = '';
+      for (var i = 0; i < allHeaders.length; i++) {
+        var header = allHeaders[i];
+        var checked = visibleHeaders.indexOf(header) !== -1 ? 'checked' : '';
         html += '<label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">';
         html += '<input type="checkbox" ' + checked + ' onchange="toggleColumn(\'' + header + '\')">';
         html += '<span>' + header + '</span>';
         html += '</label>';
-      });
+      }
       
       container.innerHTML = html;
     }
-    
-    // Toggle column visibility
+
     function toggleColumn(header) {
-      if (visibleHeaders.includes(header)) {
+      var index = visibleHeaders.indexOf(header);
+      if (index !== -1) {
         if (header === 'שם קובץ') {
           alert('לא ניתן להסתיר את עמודת שם הקובץ');
           return;
         }
-        visibleHeaders = visibleHeaders.filter(h => h !== header);
+        visibleHeaders.splice(index, 1);
       } else {
         visibleHeaders.push(header);
       }
       renderTable();
     }
-    
-    // Filter functions - Added missing functions
+
     function toggleFilter(columnName) {
-      const filterMenu = document.getElementById('filter-' + columnName);
+      var filterMenu = document.getElementById('filter-' + columnName);
       if (!filterMenu) return;
       
-      // Close other filter menus
-      document.querySelectorAll('.filter-menu').forEach(menu => {
-        if (menu.id !== 'filter-' + columnName) {
-          menu.classList.remove('active');
+      var menus = document.querySelectorAll('.filter-menu');
+      for (var i = 0; i < menus.length; i++) {
+        if (menus[i].id !== 'filter-' + columnName) {
+          menus[i].classList.remove('active');
         }
-      });
+      }
       
       filterMenu.classList.toggle('active');
       
@@ -1323,23 +1316,29 @@
         populateFilterMenu(columnName);
       }
     }
-    
+
     function populateFilterMenu(columnName) {
-      const filterMenu = document.getElementById('filter-' + columnName);
+      var filterMenu = document.getElementById('filter-' + columnName);
       if (!filterMenu) return;
       
-      // Get unique values for this column
-      const uniqueValues = [...new Set(data.map(row => row[columnName] || '').filter(val => val))];
+      var uniqueValues = [];
+      for (var i = 0; i < data.length; i++) {
+        var val = data[i][columnName] || '';
+        if (val && uniqueValues.indexOf(val) === -1) {
+          uniqueValues.push(val);
+        }
+      }
       
-      let html = '<input type="text" class="filter-search" placeholder="חפש..." onkeyup="filterOptions(\'' + columnName + '\', this.value)">';
+      var html = '<input type="text" class="filter-search" placeholder="חפש..." onkeyup="filterOptions(\'' + columnName + '\', this.value)">';
       html += '<div class="filter-options">';
       
-      uniqueValues.forEach(value => {
-        const checked = columnFilters[columnName] && columnFilters[columnName].includes(value) ? 'checked' : '';
+      for (var i = 0; i < uniqueValues.length; i++) {
+        var value = uniqueValues[i];
+        var checked = columnFilters[columnName] && columnFilters[columnName].indexOf(value) !== -1 ? 'checked' : '';
         html += '<div class="filter-option">';
         html += '<label><input type="checkbox" ' + checked + ' onchange="updateFilter(\'' + columnName + '\', \'' + value + '\', this.checked)">' + value + '</label>';
         html += '</div>';
-      });
+      }
       
       html += '</div>';
       html += '<div class="filter-actions">';
@@ -1349,74 +1348,109 @@
       
       filterMenu.innerHTML = html;
     }
-    
+
     function updateFilter(columnName, value, checked) {
       if (!columnFilters[columnName]) {
         columnFilters[columnName] = [];
       }
       
       if (checked) {
-        if (!columnFilters[columnName].includes(value)) {
+        if (columnFilters[columnName].indexOf(value) === -1) {
           columnFilters[columnName].push(value);
         }
       } else {
-        columnFilters[columnName] = columnFilters[columnName].filter(v => v !== value);
+        var index = columnFilters[columnName].indexOf(value);
+        if (index !== -1) {
+          columnFilters[columnName].splice(index, 1);
+        }
       }
       
       renderTable();
     }
-    
+
     function clearFilter(columnName) {
       columnFilters[columnName] = [];
       renderTable();
       document.getElementById('filter-' + columnName).classList.remove('active');
     }
-    
+
     function selectAllFilter(columnName) {
-      const uniqueValues = [...new Set(data.map(row => row[columnName] || '').filter(val => val))];
-      columnFilters[columnName] = [...uniqueValues];
+      var uniqueValues = [];
+      for (var i = 0; i < data.length; i++) {
+        var val = data[i][columnName] || '';
+        if (val && uniqueValues.indexOf(val) === -1) {
+          uniqueValues.push(val);
+        }
+      }
+      columnFilters[columnName] = uniqueValues.slice();
       renderTable();
       document.getElementById('filter-' + columnName).classList.remove('active');
     }
-    
+
     function filterOptions(columnName, searchTerm) {
-      const filterMenu = document.getElementById('filter-' + columnName);
-      const options = filterMenu.querySelectorAll('.filter-option');
+      var filterMenu = document.getElementById('filter-' + columnName);
+      var options = filterMenu.querySelectorAll('.filter-option');
       
-      options.forEach(option => {
-        const text = option.textContent.toLowerCase();
-        if (text.includes(searchTerm.toLowerCase())) {
+      for (var i = 0; i < options.length; i++) {
+        var option = options[i];
+        var text = option.textContent.toLowerCase();
+        if (text.indexOf(searchTerm.toLowerCase()) !== -1) {
           option.style.display = 'block';
         } else {
           option.style.display = 'none';
         }
-      });
+      }
     }
-    
-    // Template functions - Updated to use in-memory storage
+
     function saveTemplate() {
-      const templateName = document.getElementById('templateName').value.trim();
+      var templateName = document.getElementById('templateName').value.trim();
       if (!templateName) {
         alert('אנא הכנס שם תבנית');
         return;
       }
       
-      const template = {
+      var template = {
         name: templateName,
-        positions: {...positions},
-        customHeaders: [...customHeaders],
-        visibleHeaders: [...visibleHeaders]
+        positions: JSON.parse(JSON.stringify(positions)),
+        customHeaders: customHeaders.slice(),
+        visibleHeaders: visibleHeaders.slice()
       };
       
-      // Check if template already exists
-      const existingIndex = savedTemplates.findIndex(t => t.name === templateName);
+      // Load existing templates from localStorage
+      var existingTemplates = [];
+      try {
+        var stored = localStorage.getItem('pdfExtractorTemplates');
+        if (stored) {
+          existingTemplates = JSON.parse(stored);
+        }
+      } catch (e) {
+        console.warn('Could not load templates from localStorage:', e);
+      }
+      
+      var existingIndex = -1;
+      for (var i = 0; i < existingTemplates.length; i++) {
+        if (existingTemplates[i].name === templateName) {
+          existingIndex = i;
+          break;
+        }
+      }
+      
       if (existingIndex >= 0) {
         if (confirm('תבנית בשם זה כבר קיימת. האם להחליף?')) {
-          savedTemplates[existingIndex] = template;
+          existingTemplates[existingIndex] = template;
         } else {
           return;
         }
       } else {
+        existingTemplates.push(template);
+      }
+      
+      // Save to localStorage
+      try {
+        localStorage.setItem('pdfExtractorTemplates', JSON.stringify(existingTemplates));
+        savedTemplates = existingTemplates.slice();
+      } catch (e) {
+        console.warn('Could not save templates to localStorage:', e);
         savedTemplates.push(template);
       }
       
@@ -1424,113 +1458,45 @@
       alert('תבנית נשמרה בהצלחה');
       document.getElementById('templateName').value = '';
     }
-    
+
     function loadTemplate() {
-      const selector = document.getElementById('templateSelector');
-      const templateName = selector.value;
+      var selector = document.getElementById('templateSelector');
+      var templateName = selector.value;
       
       if (!templateName) return;
       
-      const template = savedTemplates.find(t => t.name === templateName);
-      
-      if (template) {
-        positions = {...template.positions};
-        customHeaders = [...template.customHeaders];
-        visibleHeaders = [...template.visibleHeaders];
-        
-        // Update data with new custom headers
-        data.forEach(row => {
-          customHeaders.forEach(header => {
-            if (!(header in row)) {
-              row[header] = '';
-            }
-          });
-        });
-        
-        renderColumnFilters();
-        renderTable();
-        alert('תבנית נטענה בהצלחה');
-      }
-    }
-    
-    function deleteTemplate() {
-      const selector = document.getElementById('templateSelector');
-      const templateName = selector.value;
-      
-      if (!templateName) {
-        alert('אנא בחר תבנית למחיקה');
-        return;
-      }
-      
-      if (confirm('האם למחוק את התבנית "' + templateName + '"?')) {
-        savedTemplates = savedTemplates.filter(t => t.name !== templateName);
-        updateTemplateSelector();
-        alert('תבנית נמחקה');
-      }
-    }
-    
-    function updateTemplateSelector() {
-      const selector = document.getElementById('templateSelector');
-      
-      selector.innerHTML = '<option value="">טען תבנית...</option>';
-      savedTemplates.forEach(template => {
-        const option = document.createElement('option');
-        option.value = template.name;
-        option.textContent = template.name;
-        selector.appendChild(option);
-      });
-    }
-      
-      // Check if template already exists
-      const existingIndex = savedTemplates.findIndex(t => t.name === templateName);
-      if (existingIndex >= 0) {
-        if (confirm('תבנית בשם זה כבר קיימת. האם להחליף?')) {
-          savedTemplates[existingIndex] = template;
-        } else {
-          return;
+      var template = null;
+      for (var i = 0; i < savedTemplates.length; i++) {
+        if (savedTemplates[i].name === templateName) {
+          template = savedTemplates[i];
+          break;
         }
-      } else {
-        savedTemplates.push(template);
       }
       
-      localStorage.setItem('pdfTemplates', JSON.stringify(savedTemplates));
-      updateTemplateSelector();
-      alert('תבנית נשמרה בהצלחה');
-      document.getElementById('templateName').value = '';
-    
-    
-    function loadTemplate() {
-      const selector = document.getElementById('templateSelector');
-      const templateName = selector.value;
-      
-      if (!templateName) return;
-      
-      const savedTemplates = JSON.parse(localStorage.getItem('pdfTemplates') || '[]');
-      const template = savedTemplates.find(t => t.name === templateName);
-      
       if (template) {
-        positions = {...template.positions};
-        customHeaders = [...template.customHeaders];
-        visibleHeaders = [...template.visibleHeaders];
+        positions = JSON.parse(JSON.stringify(template.positions));
+        customHeaders = template.customHeaders.slice();
+        visibleHeaders = template.visibleHeaders.slice();
         
-        // Update data with new custom headers
-        data.forEach(row => {
-          customHeaders.forEach(header => {
+        for (var i = 0; i < data.length; i++) {
+          var row = data[i];
+          for (var j = 0; j < customHeaders.length; j++) {
+            var header = customHeaders[j];
             if (!(header in row)) {
               row[header] = '';
             }
-          });
-        });
+          }
+        }
         
         renderColumnFilters();
         renderTable();
         alert('תבנית נטענה בהצלחה');
       }
     }
-    
+
     function deleteTemplate() {
-      const selector = document.getElementById('templateSelector');
-      const templateName = selector.value;
+      var selector = document.getElementById('templateSelector');
+      var templateName = selector.value;
       
       if (!templateName) {
         alert('אנא בחר תבנית למחיקה');
@@ -1538,41 +1504,69 @@
       }
       
       if (confirm('האם למחוק את התבנית "' + templateName + '"?')) {
-        let savedTemplates = JSON.parse(localStorage.getItem('pdfTemplates') || '[]');
-        savedTemplates = savedTemplates.filter(t => t.name !== templateName);
-        localStorage.setItem('pdfTemplates', JSON.stringify(savedTemplates));
+        // Remove from memory
+        for (var i = 0; i < savedTemplates.length; i++) {
+          if (savedTemplates[i].name === templateName) {
+            savedTemplates.splice(i, 1);
+            break;
+          }
+        }
+        
+        // Update localStorage
+        try {
+          localStorage.setItem('pdfExtractorTemplates', JSON.stringify(savedTemplates));
+        } catch (e) {
+          console.warn('Could not update localStorage:', e);
+        }
+        
         updateTemplateSelector();
         alert('תבנית נמחקה');
       }
     }
-    
+
     function updateTemplateSelector() {
-      const selector = document.getElementById('templateSelector');
-      const savedTemplates = JSON.parse(localStorage.getItem('pdfTemplates') || '[]');
-      
+      var selector = document.getElementById('templateSelector');
       selector.innerHTML = '<option value="">טען תבנית...</option>';
-      savedTemplates.forEach(template => {
-        const option = document.createElement('option');
+      
+      for (var i = 0; i < savedTemplates.length; i++) {
+        var template = savedTemplates[i];
+        var option = document.createElement('option');
         option.value = template.name;
         option.textContent = template.name;
         selector.appendChild(option);
-      });
+      }
     }
-    
-    // Close filter menus when clicking outside
+
+    function loadTemplatesFromStorage() {
+      try {
+        var stored = localStorage.getItem('pdfExtractorTemplates');
+        if (stored) {
+          savedTemplates = JSON.parse(stored);
+        }
+      } catch (e) {
+        console.warn('Could not load templates from localStorage:', e);
+        savedTemplates = [];
+      }
+    }
+
+    // Event listeners
     document.addEventListener('click', function(e) {
       if (!e.target.closest('.filter-dropdown')) {
-        document.querySelectorAll('.filter-menu').forEach(menu => {
-          menu.classList.remove('active');
-        });
+        var menus = document.querySelectorAll('.filter-menu');
+        for (var i = 0; i < menus.length; i++) {
+          menus[i].classList.remove('active');
+        }
       }
     });
-    
-    // Initialize templates on page load
+
+    // Initialize
     window.addEventListener('load', function() {
+      loadTemplatesFromStorage();
       updateTemplateSelector();
+      renderColumnFilters();
+      renderTable();
     });
-    
+
   </script>
 </body>
 </html>
