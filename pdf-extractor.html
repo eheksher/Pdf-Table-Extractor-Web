@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>חילוץ נתונים מ-PDF</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="css/pdf-extractor.css">
+  <!-- נוסיף כמה סגנונות ללוגו -->
+  <style>
+    .header {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid #e2e8f0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      margin-bottom: 2rem;
+    }
+
+    .nav {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 70px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+    }
+
+    .logo-icon {
+      width: 50px;
+      height: 50px;
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.3rem;
+      font-weight: 900;
+      font-family: 'Arial Black', Arial, sans-serif;
+      letter-spacing: -0.12em;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+
+    .logo-text {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .logo-divider {
+      color: #e2e8f0;
+      font-size: 1.8rem;
+      font-weight: 300;
+    }
+
+    .logo-name {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #1e293b;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+    }
+
+    .nav-link {
+      text-decoration: none;
+      color: #64748b;
+      font-weight: 500;
+      transition: color 0.2s;
+      position: relative;
+    }
+
+    .nav-link:hover {
+      color: #2563eb;
+    }
+
+    .nav-link.active {
+      color: #2563eb;
+      font-weight: 600;
+    }
+
+    .btn-nav {
+      padding: 0.5rem 1rem;
+      background: #2563eb;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .btn-nav:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+
+    @media (max-width: 768px) {
+      .nav {
+        padding: 0 1rem;
+      }
+      
+      .nav-links {
+        display: none;
+      }
+      
+      .logo-name {
+        font-size: 1.2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header עם לוגו וניווט -->
+  <header class="header">
+    <nav class="nav">
+      <div class="logo">
+        <div class="logo-icon">SD</div>
+        <div class="logo-text">
+          <span class="logo-divider">|</span>
+          <span class="logo-name">SketchData</span>
+        </div>
+      </div>
+      <div>
+        <a href="index.html" class="btn-nav">חזרה לעמוד הבית</a>
+      </div>
+    </nav>
+  </header>
+
+  <div class="file-input">
+    <input type="file" id="fileInput" multiple accept=".pdf">
+    <div>בחר קבצי PDF לחילוץ נתונים</div>
+  </div>
+  
+  <div class="container">
+    <div class="left">
+      <div class="toolbar">
+        <button class="extract-btn" onclick="extractAll()">🚀 חלץ נתונים מכל הקבצים</button>
+        <button class="btn" onclick="exportExcel()">📊 ייצוא לאקסל</button>
+        
+        <div style="margin-right: 20px;">
+          <input type="text" id="newColumnName" placeholder="הכנס שם עמודה חדשה" style="padding: 6px; border: 1px solid #6377e2; border-radius: 4px; margin-left: 10px;">
+          <button class="btn" onclick="addCustomColumn()" style="background: #17a2b8;">➕ הוסף עמודה</button>
+        </div>
+        
+        <div style="margin-right: 20px;">
+          <input type="text" id="templateName" placeholder="שם תבנית" style="padding: 6px; border: 1px solid #6377e2; border-radius: 4px; margin-left: 10px;">
+          <button class="btn" onclick="saveTemplate()" style="background: #28a745;">💾 שמור תבנית</button>
+          <select id="templateSelector" onchange="loadTemplate()" style="padding: 6px; border: 1px solid #6377e2; border-radius: 4px; margin-left: 5px;">
+            <option value="">טען תבנית...</option>
+          </select>
+          <button class="btn" onclick="deleteTemplate()" style="background: #dc3545;">🗑️ מחק תבנית</button>
+        </div>
+      </div>
+      
+      <div style="margin-bottom: 15px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <h4 style="margin: 0 0 10px 0;">סינון עמודות:</h4>
+        <div id="columnFilters" style="display: flex; flex-wrap: wrap; gap: 10px;"></div>
+      </div>
+      <div id="tableContainer"></div>
+    </div>
+    
+    <div class="right">
+      <div class="pdf-header">
+        <h3>תצוגת PDF להגדרת מיקומים</h3>
+      </div>
+      
+      <div id="fieldInfo" class="field-info" style="display: none;">
+        <h4 id="currentField">שדה נוכחי</h4>
+        <p>לחץ וגרור על ה-PDF כדי לבחור את האזור שבו נמצא השדה</p>
+        <button class="save-btn" id="saveBtn" onclick="savePosition()" disabled>💾 שמור מיקום</button>
+        <div id="textResult" class="text-result" style="display: none;"></div>
+      </div>
+      
+      <div class="controls">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+          <span style="font-weight: bold; color: #6377e2;">קובץ נוכחי:</span>
+          <select id="fileSelector" onchange="changeFile()" style="padding: 5px; border-radius: 4px; border: 1px solid #6377e2;">
+            <option value="">בחר קובץ...</option>
+          </select>
+        </div>
+        
+        <div style="display: flex; gap: 8px; align-items: center; justify-content: center;">
+          <button onclick="prevPage()">◀</button>
+          <span>עמוד <span id="pageNum">1</span> מתוך <span id="totalPages">0</span></span>
+          <button onclick="nextPage()">▶</button>
+          <button onclick="zoomOut()">🔍-</button>
+          <span id="zoom">100%</span>
+          <button onclick="zoomIn()">🔍+</button>
+        </div>
+      </div>
+      
+      <div class="pdf-container" id="pdfContainer">
+        <div class="loading">העלה קבצי PDF כדי להתחיל</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="calculatorModal" class="calculator-modal">
+    <div class="calculator-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3>מחשבון היקף</h3>
+        <button onclick="closeCalculator()" style="background: none; border: none; font-size: 20px; cursor: pointer;">&times;</button>
+      </div>
+      
+      <div style="margin-bottom: 15px;">
+        <label><strong>הזן מידות (בסנטימטרים):</strong></label>
+        <div style="margin-top: 10px;">
+          <div>
+            <label>אורך 1:</label> <input type="number" class="calc-input" id="length1" placeholder="0">
+            <label>רוחב 1:</label> <input type="number" class="calc-input" id="width1" placeholder="0">
+          </div>
+          <div>
+            <label>אורך 2:</label> <input type="number" class="calc-input" id="length2" placeholder="0">
+            <label>רוחב 2:</label> <input type="number" class="calc-input" id="width2" placeholder="0">
+          </div>
+          <div>
+            <label>אורך 3:</label> <input type="number" class="calc-input" id="length3" placeholder="0">
+            <label>רוחב 3:</label> <input type="number" class="calc-input" id="width3" placeholder="0">
+          </div>
+        </div>
+      </div>
+      
+      <div style="text-align: center; margin: 15px 0;">
+        <button class="btn" onclick="calculatePerimeter()">חשב היקף</button>
+        <button class="btn" onclick="resetCalculator()" style="background: #6c757d;">אפס</button>
+      </div>
+      
+      <div class="calc-result" id="calcResult">
+        היקף כולל: 0 ס"מ
+      </div>
+      
+      <div style="text-align: center; margin-top: 15px;">
+        <button class="btn" onclick="saveCalculatedPerimeter()" style="background: #28a745;">שמור ערך בטבלה</button>
+      </div>
+    </div>
+  </div>
+<script src="js/pdf-extractor.js"></script>
+</body>
+</html>
