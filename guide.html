@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>מדריך משתמש - SketchData</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #2563eb;
+      --primary-light: #3b82f6;
+      --accent: #059669;
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --background: #ffffff;
+      --surface: #f8fafc;
+      --border: #e2e8f0;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      line-height: 1.7;
+      color: var(--text-primary);
+      background: var(--surface);
+      direction: rtl;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding: 2rem;
+      background: white;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .logo-section {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .logo-icon {
+      width: 50px;
+      height: 50px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.3rem;
+      font-weight: 900;
+      font-family: 'Arial Black', Arial, sans-serif;
+      letter-spacing: -0.12em;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+
+    .logo-text {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .guide-title {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .guide-subtitle {
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+    }
+
+    .intro-section {
+      background: white;
+      padding: 2rem;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      margin-bottom: 2rem;
+    }
+
+    .intro-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .step-section {
+      background: white;
+      margin-bottom: 2rem;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      border-top: 4px solid var(--primary);
+    }
+
+    .step-header {
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: white;
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .step-number {
+      width: 50px;
+      height: 50px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .step-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    .step-content {
+      padding: 2rem;
+    }
+
+    .step-description {
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      margin-bottom: 1.5rem;
+      line-height: 1.6;
+    }
+
+    .step-points {
+      list-style: none;
+      margin-bottom: 1.5rem;
+    }
+
+    .step-points li {
+      padding: 0.75rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .step-points li:last-child {
+      border-bottom: none;
+    }
+
+    .point-icon {
+      width: 24px;
+      height: 24px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+
+    .visual-demo {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      border: 2px dashed var(--border);
+      margin-top: 1rem;
+    }
+
+    .demo-box {
+      display: inline-block;
+      padding: 1rem 1.5rem;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .tips-section {
+      background: linear-gradient(135deg, var(--accent), #10b981);
+      color: white;
+      padding: 2rem;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      margin-bottom: 2rem;
+    }
+
+    .tips-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tips-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .tip-card {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 1rem;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .contact-section {
+      background: white;
+      padding: 2rem;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+
+    .contact-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 1rem;
+    }
+
+    .contact-info {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    .contact-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+
+    .contact-item:hover {
+      background: var(--surface);
+      color: var(--primary);
+    }
+
+    .back-button {
+      position: fixed;
+      top: 2rem;
+      left: 2rem;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      padding: 0.75rem 1.5rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      transition: all 0.3s ease;
+      z-index: 100;
+    }
+
+    .back-button:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .print-button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem 1.5rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 1rem;
+      transition: all 0.2s;
+    }
+
+    .print-button:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow);
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 1rem;
+      }
+      
+      .back-button {
+        top: 1rem;
+        left: 1rem;
+        padding: 0.5rem 1rem;
+      }
+      
+      .contact-info {
+        flex-direction: column;
+        gap: 1rem;
+      }
+      
+      .tips-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media print {
+      .back-button,
+      .print-button {
+        display: none;
+      }
+      
+      body {
+        background: white;
+      }
+      
+      .container {
+        max-width: none;
+        padding: 0;
+      }
+      
+      .step-section,
+      .intro-section,
+      .tips-section,
+      .contact-section {
+        box-shadow: none;
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <button class="back-button" onclick="history.back()">← חזרה</button>
+
+  <div class="container">
+    <div class="header">
+      <div class="logo-section">
+        <div class="logo-icon">SD</div>
+        <div class="logo-text">SketchData</div>
+      </div>
+      <h1 class="guide-title">מדריך משתמש</h1>
+      <p class="guide-subtitle">חילוץ נתונים משירטוטים ו-PDF - הוראות שלב אחר שלב</p>
+    </div>
+
+    <div class="intro-section">
+      <h2 class="intro-title">🎯 מה זה SketchData?</h2>
+      <p>SketchData הוא כלי מתקדם המשתמש בבינה מלאכותית לחילוץ נתונים אוטומטי מקבצי PDF ושירטוטים. המערכת מאפשרת לכם לעבד מאות קבצים בו זמנית ולייצא את הנתונים לקובץ Excel מסודר תוך דקות ספורות.</p>
+      <br>
+      <p><strong>היתרונות העיקריים:</strong> חיסכון של 90% מהזמן, דיוק מוחלט, עיבוד מקומי ובטוח, ותמיכה בפורמטים מרובים.</p>
+    </div>
+
+    <div class="step-section">
+      <div class="step-header">
+        <div class="step-number">1</div>
+        <div class="step-title">העלאת קבצים</div>
+      </div>
+      <div class="step-content">
+        <p class="step-description">
+          השלב הראשון הוא העלאת הקבצים למערכת. תוכלו להעלות קובץ יחיד או מאות קבצים בו זמנית.
+        </p>
+        <ul class="step-points">
+          <li>
+            <div class="point-icon">📁</div>
+            <div>גררו קבצים ישירות לאזור ההעלאה או לחצו לבחירה מהמחשב</div>
+          </li>
+          <li>
+            <div class="point-icon">📄</div>
+            <div>נתמכים: PDF ושירטוטים הנדסיים</div>
+          </li>
+          <li>
+            <div class="point-icon">⚡</div>
+            <div>אין הגבלה על כמות הקבצים - עבדו עם פרויקטים גדולים</div>
+          </li>
+          <li>
+            <div class="point-icon">🔒</div>
+            <div>כל הקבצים נשארים במחשב שלכם - אבטחה מלאה</div>
+          </li>
+        </ul>
+        <div class="visual-demo">
+          <div class="demo-box">📄📄📄 גרור קבצים כאן</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-section">
+      <div class="step-header">
+        <div class="step-number">2</div>
+        <div class="step-title">סימון נתונים</div>
+      </div>
+      <div class="step-content">
+        <p class="step-description">
+          בשלב זה תסמנו את הנתונים שרוצים לחלץ. המערכת תלמד מהבחירות שלכם ותחיל אותן על כל הקבצים.
+        </p>
+        <ul class="step-points">
+          <li>
+            <div class="point-icon">🎯</div>
+            <div>לחצו על השדות, המספרים או הטקסט שרוצים לחלץ</div>
+          </li>
+          <li>
+            <div class="point-icon">🏷️</div>
+            <div>תנו שם לכל שדה (למשל: "תאריך", "סכום", "שם לקוח")</div>
+          </li>
+          <li>
+            <div class="point-icon">📋</div>
+            <div>אפשר לסמן טבלאות שלמות, חתימות או כל סוג נתון</div>
+          </li>
+          <li>
+            <div class="point-icon">🎨</div>
+            <div>השתמשו בצבעים שונים כדי להבחין בין סוגי הנתונים</div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="step-section">
+      <div class="step-header">
+        <div class="step-number">3</div>
+        <div class="step-title">חילוץ אוטומטי</div>
+      </div>
+      <div class="step-content">
+        <p class="step-description">
+          המערכת עוברת על כל הקבצים ומחלצת את הנתונים במיקומים שסימנתם. התהליך מתבצע בבינה מלאכותית מתקדמת.
+        </p>
+        <ul class="step-points">
+          <li>
+            <div class="point-icon">🤖</div>
+            <div> מזהים טקסט, מספרים וטבלאות</div>
+          </li>
+          <li>
+            <div class="point-icon">⚙️</div>
+            <div>עיבוד מקביל של מאות קבצים בו זמנית</div>
+          </li>
+          <li>
+            <div class="point-icon">📊</div>
+            <div>זיהוי אוטומטי של פורמטים: תאריכים, סכומים, מספרים</div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="step-section">
+      <div class="step-header">
+        <div class="step-number">4</div>
+        <div class="step-title">ייצוא תוצאות</div>
+      </div>
+      <div class="step-content">
+        <p class="step-description">
+          בסיום התהליך תקבלו קובץ Excel מסודר עם כל הנתונים מכל הקבצים, מוכן לעבודה ולניתוח.
+        </p>
+        <ul class="step-points">
+          <li>
+            <div class="point-icon">📊</div>
+            <div>קובץ Excel עם עמודות מסודרות לכל סוג נתון</div>
+          </li>
+          <li>
+            <div class="point-icon">🏷️</div>
+            <div>כותרות ברורות עם השמות שנתתם לשדות</div>
+          </li>
+          <li>
+            <div class="point-icon">🎨</div>
+            <div>עיצוב נקי עם צבעים וגבולות לקריאה טובה</div>
+          </li>
+          <li>
+            <div class="point-icon">💾</div>
+            <div>אפשרות לשמור במספר פורמטים: Excel, CSV, JSON</div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="tips-section">
+      <h2 class="tips-title">💡 טיפים לתוצאות מיטביות</h2>
+      <div class="tips-grid">
+        <div class="tip-card">
+          <h3>📸 איכות הסריקה</h3>
+          <p>השתמשו ברזולוציה של 300 DPI או יותר עבור קבצים סרוקים</p>
+        </div>
+        <div class="tip-card">
+          <h3>📋 עקביות</h3>
+          <p>קבצים עם פריסה דומה יתנו תוצאות טובות יותר</p>
+        </div>
+        <div class="tip-card">
+          <h3>🎯 דיוק בסימון</h3>
+          <p>סמנו בדיוק את הנתונים הרלוונטיים ללא טקסט נוסף</p>
+        </div>
+        <div class="tip-card">
+          <h3>🏷️ שמות ברורים</h3>
+          <p>תנו שמות תיאוריים לשדות שיעזרו לכם לזהות בקובץ הסופי</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="contact-section">
+      <h2 class="contact-title">צריכים עזרה?</h2>
+      <p>אנחנו כאן לעזור! צרו קשר עם צוות התמיכה שלנו</p>
+      <div class="contact-info">
+        <a href="mailto:support@sketchdata.com" class="contact-item">
+          📧 support@sketchdata.com
+        </a>
+        <a href="https://www.sketchdata.com" class="contact-item">
+          🌐 www.sketchdata.com
+        </a>
+        <div class="contact-item">
+          📞 03-1234567
+        </div>
+      </div>
+      <button class="print-button" onclick="window.print()">🖨️ הדפס מדריך</button>
+    </div>
+  </div>
+</body>
+</html>
