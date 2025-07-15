@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>חילוץ נתונים מ-PDF - גירסה מעודכנת</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="css/pdf-extractor.css">
+</head>
+<body>
+  <!-- Header עם לוגו וניווט -->
+  <header class="header" style="background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 100;">
+    <nav class="nav" style="max-width: 100%; margin: 0; padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 70px;">
+      <div class="logo" style="display: flex; align-items: center; gap: 0.75rem; text-decoration: none;">
+        <div class="logo-icon" style="width: 50px; height: 50px; background: linear-gradient(135deg, #2563eb, #3b82f6); clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.3rem; font-weight: 900; font-family: 'Arial Black', Arial, sans-serif; letter-spacing: -0.12em; text-shadow: 0 1px 2px rgba(0,0,0,0.2);">SD</div>
+        <div class="logo-text" style="display: flex; align-items: center; gap: 0.5rem;">
+          <span class="logo-divider" style="color: #e2e8f0; font-size: 1.8rem; font-weight: 300;">|</span>
+          <span class="logo-name" style="font-size: 1.8rem; font-weight: 700; color: #1e293b;">SketchData</span>
+        </div>
+      </div>
+      <div>
+        <a href="index.html" class="btn-nav" style="padding: 0.5rem 1rem; background: #2563eb; color: white; text-decoration: none; border-radius: 6px; font-weight: 500; transition: all 0.2s;">חזרה לעמוד הבית</a>
+      </div>
+    </nav>
+  </header>
+
+  <div class="main-container">
+    <!-- Hidden file input - completely invisible -->
+    <input type="file" id="fileInput" multiple accept=".pdf">
+    
+    <!-- Office Style Ribbon -->
+    <div class="ribbon">
+      <div class="ribbon-tabs">
+        <button class="ribbon-tab active" onclick="switchTab('pdf')">
+          חילוץ נתונים מ-PDF
+        </button>
+        <button class="ribbon-tab" onclick="switchTab('table')">
+          ניהול טבלה
+        </button>
+      </div>
+      
+      <!-- PDF Tab Content -->
+      <div id="pdf-tab" class="ribbon-content active">
+        <div class="button-group">
+          <button class="office-btn" onclick="document.getElementById('fileInput').click()">
+            <div class="btn-text">העלאת קבצים</div>
+          </button>
+        </div>
+        
+        <div class="button-group">
+          <button class="office-btn" onclick="extractAll()">
+            <div class="btn-text">חילוץ נתונים</div>
+          </button>
+        </div>
+        
+        <div class="button-group">
+          <button class="office-btn" onclick="showTemplatePopup()">
+            <div class="btn-text">ניהול תבניות</div>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Table Tab Content - מעודכן עם כפתורים חדשים -->
+      <div id="table-tab" class="ribbon-content">
+        <div class="button-group">
+          <button class="office-btn" onclick="exportExcel()">
+            <div class="btn-text">ייצוא אקסל</div>
+          </button>
+        </div>
+        
+        <div class="button-group">
+          <button class="office-btn" onclick="showColumnPopup()">
+            <div class="btn-text">הוספת עמודות</div>
+          </button>
+        </div>
+        
+        <div class="button-group">
+          <button class="office-btn" onclick="showFilterPopup()">
+            <div class="btn-text">סינון עמודות</div>
+          </button>
+        </div>
+        
+        <!-- *** כפתורים חדשים *** -->
+        <div class="button-group">
+          <button class="office-btn new-feature" onclick="selectAllRows()">
+            <div class="btn-text">בחר הכל</div>
+          </button>
+        </div>
+        
+        <div class="button-group">
+          <button class="office-btn new-feature" onclick="clearAllSelections()">
+            <div class="btn-text">נקה בחירות</div>
+          </button>
+        </div>
+        
+        <div class="button-group">
+          <button class="office-btn new-feature" onclick="deleteSelectedRows()">
+            <div class="btn-text">מחק נבחרות</div>
+          </button>
+        </div>
+        
+        <div class="button-group">
+          <button class="office-btn new-feature" onclick="saveDataToStorage()">
+            <div class="btn-text">שמור נתונים</div>
+          </button>
+        </div>
+        
+        <div class="button-group">
+          <button class="office-btn new-feature" onclick="clearStoredData()">
+            <div class="btn-text">נקה נתונים</div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- *** שורת חיפוש חדשה *** -->
+    <div class="search-toolbar" id="searchToolbar">
+      <div class="search-container">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" class="search-input" placeholder="חפש בטבלה... (שם קובץ, מספר שרטוט, חומר וכו')" />
+        <button class="clear-search" onclick="clearSearch()">✕ נקה</button>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="content-grid">
+      <!-- Left Panel - Table -->
+      <div class="panel">
+        <div class="panel-header">
+          📊 טבלת נתונים
+        </div>
+        <div class="panel-content">
+          <div id="tableContainer">
+            <div class="empty-state">
+              <div class="empty-icon">📄</div>
+              <p>אנא העלה קבצי PDF כדי להתחיל</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel - PDF Viewer -->
+      <div class="panel">
+        <div class="panel-header">
+          📄 תצוגת PDF והגדרת מיקומים
+        </div>
+        <div class="panel-content">
+          <!-- Field Selection Info -->
+          <div id="fieldInfo" class="field-info">
+            <h4 id="currentField">שדה נוכחי</h4>
+            <p>לחץ וגרור על ה-PDF כדי לבחור את האזור שבו נמצא השדה</p>
+            <button class="office-btn" id="saveBtn" onclick="savePosition()" disabled>
+              <div class="btn-text">שמור מיקום</div>
+            </button>
+            <div id="textResult" style="display: none; margin-top: 8px; padding: 8px; background: #d4edda; border: 1px solid #107c10; border-radius: 2px; font-size: 12px;"></div>
+          </div>
+          
+          <!-- PDF Controls -->
+          <div class="pdf-controls">
+            <button onclick="prevPage()">◀</button>
+            <span>עמוד <span id="pageNum">1</span> מתוך <span id="totalPages">0</span></span>
+            <button onclick="nextPage()">▶</button>
+            <span style="margin: 0 8px;">|</span>
+            <button onclick="zoomOut()">🔍-</button>
+            <span id="zoom">100%</span>
+            <button onclick="zoomIn()">🔍+</button>
+          </div>
+          
+          <!-- PDF Container -->
+          <div class="pdf-container" id="pdfContainer">
+            <div class="empty-state">
+              <div class="empty-icon">📄</div>
+              <p>העלה קבצי PDF כדי להתחיל</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Template Management Popup -->
+  <div class="popup-overlay" id="templatePopup">
+    <div class="popup-window">
+      <div class="popup-header">
+        <div class="popup-title">ניהול תבניות</div>
+        <button class="popup-close" onclick="closeTemplatePopup()">&times;</button>
+      </div>
+      <div class="popup-body">
+        <div style="margin-bottom: 12px;">
+          <label style="font-size: 12px; display: block; margin-bottom: 4px;">שם תבנית חדשה:</label>
+          <div style="display: flex; gap: 4px;">
+            <input type="text" id="newTemplateName" style="flex: 1; padding: 4px; border: 1px solid #d2d0ce; border-radius: 2px; font-size: 12px;" placeholder="הכנס שם תבנית">
+            <button class="popup-btn" onclick="saveTemplate()">שמור</button>
+          </div>
+        </div>
+        <div style="border-top: 1px solid #d2d0ce; padding-top: 12px;">
+          <label style="font-size: 12px; display: block; margin-bottom: 8px;">תבניות קיימות:</label>
+          <div id="templateList" style="max-height: 200px; overflow-y: auto;">
+            <!-- Templates will be populated here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Column Management Popup -->
+  <div class="popup-overlay" id="columnPopup">
+    <div class="popup-window">
+      <div class="popup-header">
+        <div class="popup-title">ניהול עמודות</div>
+        <button class="popup-close" onclick="closeColumnPopup()">&times;</button>
+      </div>
+      <div class="popup-body">
+        <div style="margin-bottom: 12px;">
+          <label style="font-size: 12px; display: block; margin-bottom: 4px;">הוסף עמודה חדשה:</label>
+          <div style="display: flex; gap: 4px;">
+            <input type="text" id="newColumnInput" style="flex: 1; padding: 4px; border: 1px solid #d2d0ce; border-radius: 2px; font-size: 12px;" placeholder="שם עמודה">
+            <button class="popup-btn" onclick="addCustomColumnFromPopup()">הוסף</button>
+          </div>
+        </div>
+        <div style="border-top: 1px solid #d2d0ce; padding-top: 12px;">
+          <label style="font-size: 12px; display: block; margin-bottom: 8px;">עמודות מותאמות אישית:</label>
+          <div id="customColumnsList" style="max-height: 150px; overflow-y: auto;">
+            <!-- Custom columns will be populated here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Management Popup -->
+  <div class="popup-overlay" id="filterPopup">
+    <div class="popup-window">
+      <div class="popup-header">
+        <div class="popup-title">סינון עמודות</div>
+        <button class="popup-close" onclick="closeFilterPopup()">&times;</button>
+      </div>
+      <div class="popup-body">
+        <div style="margin-bottom: 8px;">
+          <label style="font-size: 12px; display: block; margin-bottom: 6px;">בחר עמודות להצגה:</label>
+        </div>
+        <div id="filterColumnsList" class="filter-grid">
+          <!-- Filter checkboxes will be populated here -->
+        </div>
+      </div>
+      <div class="popup-footer">
+        <button class="popup-btn" onclick="selectAllColumns()">בחר הכל</button>
+        <button class="popup-btn" onclick="clearAllColumns()">נקה הכל</button>
+        <button class="popup-btn" onclick="closeFilterPopup()">סגור</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Calculator Modal -->
+  <div id="calculatorModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">מחשבון היקף</div>
+        <button class="modal-close" onclick="closeCalculator()">&times;</button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="calc-grid">
+          <div class="calc-field">
+            <label>אורך 1:</label>
+            <input type="number" class="calc-input" id="length1" placeholder="0">
+          </div>
+          <div class="calc-field">
+            <label>רוחב 1:</label>
+            <input type="number" class="calc-input" id="width1" placeholder="0">
+          </div>
+          <div class="calc-field">
+            <label>אורך 2:</label>
+            <input type="number" class="calc-input" id="length2" placeholder="0">
+          </div>
+          <div class="calc-field">
+            <label>רוחב 2:</label>
+            <input type="number" class="calc-input" id="width2" placeholder="0">
+          </div>
+          <div class="calc-field">
+            <label>אורך 3:</label>
+            <input type="number" class="calc-input" id="length3" placeholder="0">
+          </div>
+          <div class="calc-field">
+            <label>רוחב 3:</label>
+            <input type="number" class="calc-input" id="width3" placeholder="0">
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin: 16px 0;">
+          <button class="office-btn" onclick="calculatePerimeter()">
+            <div class="btn-text">חשב היקף</div>
+          </button>
+          <button class="office-btn" onclick="resetCalculator()">
+            <div class="btn-text">אפס</div>
+          </button>
+        </div>
+        
+        <div class="calc-result" id="calcResult">
+          היקף כולל: 0 ס"מ
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button class="office-btn" onclick="saveCalculatedPerimeter()">
+          <div class="btn-text">שמור ערך בטבלה</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/pdf-extractor.js"></script>
+</body>
+</html>
